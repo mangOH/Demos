@@ -1,0 +1,30 @@
+sandboxed: false
+start: auto
+
+executables:
+{
+    summitWebService = ( summitWebService )
+}
+
+processes:
+{
+    run:
+    {
+        legatoWebsocketd = ( websocketd --port=9090 summitWebService )
+    }
+
+    faultAction: restart
+}
+
+bundles:
+{
+    file:
+    {
+        [x] 3rdParty/websocketd-0.2.11-linux_arm/websocketd /bin/
+    }
+}
+
+bindings:
+{
+    summitWebService.summitWebService.dataRouter -> dataRouter.dataRouter
+}
