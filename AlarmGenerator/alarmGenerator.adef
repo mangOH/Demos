@@ -1,0 +1,22 @@
+sandboxed: true
+start: auto
+
+executables:
+{
+    alarmGenerator = ( alarmGenerator )
+}
+
+processes:
+{
+    run:
+    {
+        ( alarmGenerator )
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    alarmGenerator.alarmGenerator.dataRouter -> dataRouter.dataRouter
+}
