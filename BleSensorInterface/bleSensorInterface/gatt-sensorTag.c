@@ -32,7 +32,13 @@ enum AlarmCmd {
 	ALARMCMD_BUZZ = 4
 };
 
+
 //#define DEBUG_OUTPUT
+#ifdef DEBUG_OUTPUT
+#define PRINT_DEBUG(_fmt_, ...) ( printf(_fmt_, __VA_ARGS__) )
+#else
+#define PRINT_DEBUG(_fmt_, ...) ( )
+#endif
 
 /* supposed the Move sensor raw data has the maximum value array */
 #define MAX_SENSOR_RAW	20
@@ -173,9 +179,7 @@ static int rawSensorDataStr2Value(char *line, int *len, int **value)
 	int index = 0;
 	int new;
 
-#ifdef DEBUG_OUTPUT
-	printf("Parsing: %s", line);
-#endif
+	PRINT_DEBUG("Parsing: %s", line);
 
 	// Token will point to "Characteristic value/descriptor".
 	token = strtok(line, search);
@@ -259,9 +263,7 @@ int main(int argc, char *argv[])
 	while(flag) {
 		snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x21;%s  -b %s --char-read -a 0x39; %s  -b %s --char-read -a 0x31;%s -b %s --char-read -a 0x41;%s  -b %s --char-write -a 0x29;", tool, mac, tool, mac, tool, mac, tool, mac, tool, mac);
 
-#ifdef DEBUG_OUTPUT
-		printf("Running: %s\n", cmd);
-#endif
+		PRINT_DEBUG("Running: %s\n", cmd);
 		fp = popen(cmd, "r");
 		if (fp == NULL) {
 			printf("Failed to run command\n" );
@@ -285,9 +287,7 @@ int main(int argc, char *argv[])
 	if (alarmFp == NULL) {
 		printf("!!!!!!Failed to open %s!\n", alarmFile);
 	}
-#ifdef DEBUG_OUTPUT
-	printf("Successfully open Alarm file %s!\n", alarmFile);
-#endif
+	PRINT_DEBUG("Successfully open Alarm file %s!\n", alarmFile);
 
 	printf("\n****** Sensor data available to proccess! ****** \n\n");
 	
@@ -295,9 +295,7 @@ int main(int argc, char *argv[])
 		snprintf(json_result, sizeof(json_result), "{");
 		/* IR Temperature Sensor */
 		snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x21", tool, mac);
-#ifdef DEBUG_OUTPUT
-		printf("Running: %s\n", cmd);
-#endif
+		PRINT_DEBUG("Running: %s\n", cmd);
 		fp = popen(cmd, "r");
 		if (fp == NULL) {
 			printf("Failed to run command\n" );
@@ -306,19 +304,15 @@ int main(int argc, char *argv[])
 		/* Read the output a line at a time - output it. */
 		while (fgets(path, sizeof(path)-1, fp) != NULL) {
 			rawSensorDataStr2Value(path, &len, &p);
-#ifdef DEBUG_OUTPUT
-			printf("len = %d\n", len);
+			PRINT_DEBUG("len = %d\n", len);
 			for (i = 0; i<len; i++) {
-				printf("OUT: %.2x\n", rawValue[i]);
+				PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
 			}
-#endif
 		}
 		data1 = rawValue[0] | rawValue[1] << 8;
                 data2 = rawValue[2] | rawValue[3] << 8;
                 sensorTmp007Convert(data1, data2, &value1, &value2);
-#ifdef DEBUG_OUTPUT
-                printf("IR Temperature = %.2f , Ambient Temperature = %.2f\n", value1, value2);
-#endif
+                PRINT_DEBUG("IR Temperature = %.2f , Ambient Temperature = %.2f\n", value1, value2);
                 snprintf(data, sizeof(data), "IR Temperature: %.2f\nAmbient Temperature: %.2f\n", value1, value2);
                 writeSensorDataToFile("IR-temperature.data", data);
 		snprintf(sensor, sizeof(sensor), "%s\"IRTemperatureSensor\":{\"IR Temperature\":%.2f,\"Ambient Temperature\":%.2f},", json_result, value1, value2);
@@ -326,9 +320,7 @@ int main(int argc, char *argv[])
 
 		/* Move Sensor */
 		snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x39", tool, mac);
-#ifdef DEBUG_OUTPUT
-		printf("Running: %s\n", cmd);
-#endif
+		PRINT_DEBUG("Running: %s\n", cmd);
 		fp = popen(cmd, "r");
 		if (fp == NULL) {
 			printf("Failed to run command\n" );
@@ -337,27 +329,21 @@ int main(int argc, char *argv[])
 		/* Read the output a line at a time - output it. */
 		while (fgets(path, sizeof(path)-1, fp) != NULL) {
 			rawSensorDataStr2Value(path, &len, &p);
-#ifdef DEBUG_OUTPUT
-			printf("len = %d\n", len);
+			PRINT_DEBUG("len = %d\n", len);
 			for (i = 0; i<len; i++) {
-				printf("OUT: %.2x\n", rawValue[i]);
+				PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
 			}
-#endif
 		}
 	        data1 = rawValue[0] | rawValue[1] << 8;
 	        data2 = rawValue[2] | rawValue[3] << 8;
 	        data3 = rawValue[4] | rawValue[5] << 8;
-#ifdef DEBUG_OUTPUT
-        	printf("Converting Gyro data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
-#endif
+        	PRINT_DEBUG("Converting Gyro data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
         	value1 = sensorMpu9250GyroConvert(data1);
         	value2 = sensorMpu9250GyroConvert(data2);
         	value3 = sensorMpu9250GyroConvert(data3);
-#ifdef DEBUG_OUTPUT
-        	printf("Gyro X = %.1f/S\n", value1);
-        	printf("Gyro Y = %.1f/S\n", value2);
-        	printf("Gyro Z = %.1f/S\n", value3);
-#endif
+        	PRINT_DEBUG("Gyro X = %.1f/S\n", value1);
+        	PRINT_DEBUG("Gyro Y = %.1f/S\n", value2);
+        	PRINT_DEBUG("Gyro Z = %.1f/S\n", value3);
 		snprintf(data, sizeof(data), "X=%.1f/S; Y=%.1f/S; Z=%.1f/S", value1, value2, value3); 
 		writeSensorDataToFile("Gyro.data", data); 
 		snprintf(sensor, sizeof(sensor), "%s\"MoveSensor\":{\"Gyroscope\":{\"X\":%.1f,\"Y\":%.1f,\"Z:\":%.1f},", json_result, value1, value2, value3);
@@ -366,17 +352,13 @@ int main(int argc, char *argv[])
 	        data1 = rawValue[12] | rawValue[13] << 8;
 	        data2 = rawValue[14] | rawValue[15] << 8;
 	        data3 = rawValue[16] | rawValue[17] << 8;
-#ifdef DEBUG_OUTPUT
-        	printf("Converting Mag data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
-#endif
+        	PRINT_DEBUG("Converting Mag data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
         	value1 = sensorMpu9250MagConvert(data1);
         	value2 = sensorMpu9250MagConvert(data2);
         	value3 = sensorMpu9250MagConvert(data3);
-#ifdef DEBUG_OUTPUT
-        	printf("Mag X = %.2f uT\n", value1);
-        	printf("Mag Y = %.2f uT\n", value2);
-        	printf("Mag Z = %.2f uT\n", value3);
-#endif
+        	PRINT_DEBUG("Mag X = %.2f uT\n", value1);
+        	PRINT_DEBUG("Mag Y = %.2f uT\n", value2);
+        	PRINT_DEBUG("Mag Z = %.2f uT\n", value3);
 		snprintf(data, sizeof(data), "X=%.2fuT; Y=%.2fuT; Z=%.2fuT", value1, value2, value3); 
 		writeSensorDataToFile("Mag.data", data); 
 		snprintf(sensor, sizeof(sensor), "%s\"Magnetometer\":{\"X\":%.1f,\"Y\":%.1f,\"Z:\":%.1f},", json_result, value1, value2, value3);
@@ -389,9 +371,7 @@ int main(int argc, char *argv[])
 			compassAngle = 0.0;
 		else
 			compassAngle = (atan(value2/value1) * 360.0)/3.14;
-#ifdef DEBUG_OUTPUT
-		printf("Compass Angle = %.2f\n", compassAngle);
-#endif
+		PRINT_DEBUG("Compass Angle = %.2f\n", compassAngle);
 		snprintf(data, sizeof(data), "%.2f", compassAngle); 
 		writeSensorDataToFile("Compass.data", data); 
 		snprintf(sensor, sizeof(sensor), "%s\"Compass\":{\"Angle\":%.2f},", json_result, compassAngle);
@@ -400,17 +380,13 @@ int main(int argc, char *argv[])
 	        data1 = rawValue[6] | rawValue[7] << 8;
 	        data2 = rawValue[8] | rawValue[9] << 8;
 	        data3 = rawValue[10] | rawValue[11] << 8;
-#ifdef DEBUG_OUTPUT
-        	printf("Converting Acc data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
-#endif
+        	PRINT_DEBUG("Converting Acc data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
         	value1 = sensorMpu9250AccConvert(data1);
         	value2 = sensorMpu9250AccConvert(data2);
         	value3 = sensorMpu9250AccConvert(data3);
-#ifdef DEBUG_OUTPUT
-        	printf("Accelerometer X = %.2f g\n", value1);
-        	printf("Accelerometer Y = %.2f g\n", value2);
-        	printf("Accelerometer Z = %.2f g\n", value3);
-#endif
+        	PRINT_DEBUG("Accelerometer X = %.2f g\n", value1);
+        	PRINT_DEBUG("Accelerometer Y = %.2f g\n", value2);
+        	PRINT_DEBUG("Accelerometer Z = %.2f g\n", value3);
 		snprintf(data, sizeof(data), "X=%.2fg; Y=%.2fg; Z=%.2fg", value1, value2, value3); 
 		writeSensorDataToFile("Accelerometer.data", data); 
 		snprintf(sensor, sizeof(sensor), "%s\"Accelerometer\":{\"X\":%.1f,\"Y\":%.1f,\"Z:\":%.1f},", json_result, value1, value2, value3);
@@ -430,10 +406,8 @@ int main(int argc, char *argv[])
 		accDiffY = value2 - lastValue2;
 		accDiffZ = value3 - lastValue3;
 		accDiff = sqrt(accDiffX*accDiffX + accDiffY*accDiffY + accDiffZ*accDiffZ);
-#ifdef DEBUG_OUTPUT
-		printf("Last Accelerometer x = %.2f, y = %.2f, z = %.2f\n", lastValue1, lastValue2, lastValue3);
-		printf("Shock = %.2f, dx=%.2f, dy=%.2f, dz=%.2f \n", accDiff, accDiffX, accDiffY, accDiffZ);
-#endif
+		PRINT_DEBUG("Last Accelerometer x = %.2f, y = %.2f, z = %.2f\n", lastValue1, lastValue2, lastValue3);
+		PRINT_DEBUG("Shock = %.2f, dx=%.2f, dy=%.2f, dz=%.2f \n", accDiff, accDiffX, accDiffY, accDiffZ);
 		snprintf(data, sizeof(data), "%.2f", accDiff); 
 		writeSensorDataToFile("Shock.data", data); 
 		snprintf(sensor, sizeof(sensor), "%s\"Shock Movement\":{\"Shock\":%.2f},", json_result, accDiff);
@@ -480,9 +454,7 @@ int main(int argc, char *argv[])
 
 		/* Barometric Pressure sensor: */
 		snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x31", tool, mac);
-#ifdef DEBUG_OUTPUT
-		printf("Running: %s\n", cmd);
-#endif
+		PRINT_DEBUG("Running: %s\n", cmd);
 		fp = popen(cmd, "r");
 		if (fp == NULL) {
 			printf("Failed to run command\n" );
@@ -491,20 +463,16 @@ int main(int argc, char *argv[])
 		/* Read the output a line at a time - output it. */
 		while (fgets(path, sizeof(path)-1, fp) != NULL) {
 			rawSensorDataStr2Value(path, &len, &p);
-#ifdef DEBUG_OUTPUT
-			printf("len = %d\n", len);
+			PRINT_DEBUG("len = %d\n", len);
 			for (i = 0; i<len; i++) {
-				printf("OUT: %.2x\n", rawValue[i]);
+				PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
 			}
-#endif
 		}
 		d32_1 = rawValue[0] | rawValue[1] << 8 | rawValue[2] << 16;
                 d32_2 = rawValue[3] | rawValue[4] << 8 | rawValue[5] << 16;
                 value1 = calcBmp280(d32_1);
                 value2 = calcBmp280(d32_2);
-#ifdef DEBUG_OUTPUT
-                printf("Pressure Temperature = %.2f , Pressure = %.2f\n", value1, value2);
-#endif
+                PRINT_DEBUG("Pressure Temperature = %.2f , Pressure = %.2f\n", value1, value2);
                 snprintf(data, sizeof(data), "Pressure Temperature: %.2f\nPressure: %.2f\n", value1, value2);
                 writeSensorDataToFile("Pressure.data", data);
 		snprintf(sensor, sizeof(sensor), "%s\"BarometricPressureSensor\":{\"Pressure Temperature\":%.2f,\"Pressure\":%.2f},", json_result, value1, value2);
@@ -512,9 +480,7 @@ int main(int argc, char *argv[])
 
 		/* Optical sensor: */
 		snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x41", tool, mac);
-#ifdef DEBUG_OUTPUT
-		printf("Running: %s\n", cmd);
-#endif
+		PRINT_DEBUG("Running: %s\n", cmd);
 		fp = popen(cmd, "r");
 		if (fp == NULL) {
 			printf("Failed to run command\n" );
@@ -523,18 +489,14 @@ int main(int argc, char *argv[])
 		/* Read the output a line at a time - output it. */
 		while (fgets(path, sizeof(path)-1, fp) != NULL) {
 			rawSensorDataStr2Value(path, &len, &p);
-#ifdef DEBUG_OUTPUT
-			printf("len = %d\n", len);
+			PRINT_DEBUG("len = %d\n", len);
 			for (i = 0; i<len; i++) {
-				printf("OUT: %.2x\n", rawValue[i]);
+				PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
 			}
-#endif
 		}
 		data1 = rawValue[0] | rawValue[1] << 8;
                 value1 = sensorOpt3001Convert(data1);
-#ifdef DEBUG_OUTPUT
-                printf("Optical sensor = %.2f\n", value1);
-#endif
+                PRINT_DEBUG("Optical sensor = %.2f\n", value1);
                 snprintf(data, sizeof(data), "Optical sensor: %.2f\n", value1);
                 writeSensorDataToFile("Optical.data", data);
 		snprintf(sensor, sizeof(sensor), "%s\"OpticalSensor\":{\"Luminosity\":%.2f},", json_result, value1);
@@ -542,9 +504,7 @@ int main(int argc, char *argv[])
 
 		/* Humidity sensor: */
 		snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x29", tool, mac);
-#ifdef DEBUG_OUTPUT
-		printf("Running: %s\n", cmd);
-#endif
+		PRINT_DEBUG("Running: %s\n", cmd);
 		fp = popen(cmd, "r");
 		if (fp == NULL) {
 			printf("Failed to run command\n" );
@@ -553,19 +513,15 @@ int main(int argc, char *argv[])
 		/* Read the output a line at a time - output it. */
 		while (fgets(path, sizeof(path)-1, fp) != NULL) {
 			rawSensorDataStr2Value(path, &len, &p);
-#ifdef DEBUG_OUTPUT
-			printf("len = %d\n", len);
+			PRINT_DEBUG("len = %d\n", len);
 			for (i = 0; i<len; i++) {
-				printf("OUT: %.2x\n", rawValue[i]);
+				PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
 			}
-#endif
 		}
 		data1 = rawValue[0] | rawValue[1] << 8;
 		data2 = rawValue[2] | rawValue[3] << 8;
                 sensorHdc1000Convert(data1, data2, &value1, &value2);
-#ifdef DEBUG_OUTPUT
-                printf("Humidity sensor temp = %.2f, humidity = %.2f\n", value1, value2);
-#endif
+                PRINT_DEBUG("Humidity sensor temp = %.2f, humidity = %.2f\n", value1, value2);
                 snprintf(data, sizeof(data), "Humidity Temperature: %.2f\n Humidity: %.2f\n", value1, value2);
                 writeSensorDataToFile("Humidity.data", data);
 		snprintf(sensor, sizeof(sensor), "%s\"HumiditySensor\":{\"Temperature\":%.2f,\"Humidity\":%.2f}", json_result, value1, value2);
@@ -586,9 +542,7 @@ int main(int argc, char *argv[])
 			fseek(alarmFp, 0, SEEK_SET);
 			while (fgets(path, sizeof(path)-1, alarmFp) != NULL) {
 				alarmCmd = atoi(path);
-#ifdef DEBUG_OUTPUT
-				printf("***********Alarm FP: path = %s, alarm=%d\n", path, alarmCmd);
-#endif
+				PRINT_DEBUG("***********Alarm FP: path = %s, alarm=%d\n", path, alarmCmd);
 			}
 			if (lastAlarmCmd == alarmCmd)
 				continue;
