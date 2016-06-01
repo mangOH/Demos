@@ -95,6 +95,7 @@ static void OrientationUpdateHandler(
 
 COMPONENT_INIT
 {
+    dataRouter_SessionStart("eu.airvantage.net", "SwiBridge", true, DATAROUTER_CACHE);
     dataRouter_DataUpdateHandlerRef_t shockHandlerRef =
         dataRouter_AddDataUpdateHandler(shockKey, ShockUpdateHandler, NULL);
     dataRouter_DataUpdateHandlerRef_t temperatureHandlerRef =
