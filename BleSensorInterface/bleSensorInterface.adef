@@ -1,0 +1,23 @@
+sandboxed: false
+start: manual
+
+executables:
+{
+    bleSensorInterface = ( bleSensorInterface )
+}
+
+processes:
+{
+    run:
+    {
+        ( bleSensorInterface )
+    }
+
+    faultAction: stopApp
+}
+
+bindings:
+{
+    bleSensorInterface.bleSensorInterface.dataRouter -> dataRouter.dataRouter
+}
+

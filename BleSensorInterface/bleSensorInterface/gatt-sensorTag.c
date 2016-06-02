@@ -11,6 +11,9 @@
 #include "config.h"
 #endif
 
+#include "legato.h"
+#include "interfaces.h"
+#include "le_cfg_interface.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -33,12 +36,33 @@ enum AlarmCmd
     ALARMCMD_BUZZ      = 4
 };
 
+// DataRouter/AirVantage keys
+#define KEY_IR_TEMPERATURE_AMBIENT      "other.irTemperatureAmbient"
+#define KEY_IR_TEMPERATURE_IR           "other.irTemperatureIr"
+#define KEY_MOVEMENT_GYRO_X             "other.gyroX"
+#define KEY_MOVEMENT_GYRO_Y             "other.gyroY"
+#define KEY_MOVEMENT_GYRO_Z             "other.gyroZ"
+#define KEY_MOVEMENT_MAGNETOMETER_X     "other.magnetometerX"
+#define KEY_MOVEMENT_MAGNETOMETER_Y     "other.magnetometerY"
+#define KEY_MOVEMENT_MAGNETOMETER_Z     "other.magnetometerZ"
+#define KEY_MOVEMENT_ACCELEROMETER_X    "container.accelerationX"
+#define KEY_MOVEMENT_ACCELEROMETER_Y    "container.accelerationY"
+#define KEY_MOVEMENT_ACCELEROMETER_Z    "container.accelerationZ"
+#define KEY_SHOCK                       "container.shock"
+#define KEY_ORIENTATION                 "container.orientation"
+#define KEY_BAROMETR_TEMPERATURE        "other.barometerTemperature"
+#define KEY_BAROMETR_PRESSURE           "other.barometerPressure"
+#define KEY_OPTICAL_LUMINOSITY          "container.luminosity"
+#define KEY_HUMIDITY_SENSOR_TEMPERATURE "container.temperature"
+#define KEY_HUMIDITY_SENSOR_HUMIDITY    "container.humidity"
+#define KEY_COMPASS                     "container.compass"
 
-//#define DEBUG_OUTPUT
+
+#define DEBUG_OUTPUT
 #ifdef DEBUG_OUTPUT
-#define PRINT_DEBUG(_fmt_, ...) (printf(_fmt_, __VA_ARGS__))
+#define PRINT_DEBUG(_fmt_, ...) LE_DEBUG(_fmt_, __VA_ARGS__)
 #else
-#define PRINT_DEBUG(_fmt_, ...) ()
+#define PRINT_DEBUG(_fmt_, ...)
 #endif
 
 /* supposed the Move sensor raw data has the maximum value array */
@@ -49,7 +73,6 @@ enum AlarmCmd
 static int writeSensorDataToFile(const char* fileName, char* data)
 {
     FILE* fp;
-    char* dir = "sensorTag";
     char  path[64];
 
     if (!data)
@@ -172,11 +195,69 @@ float sensorOpt3001Convert(int16_t rawData)
     // return m * (0.01 * pow(2.0,e));
 }
 
+static void publishIrTemperatureSensorReading(float ambientTemperature, float irTemperature)
+{
+    dataRouter_WriteFloat(KEY_IR_TEMPERATURE_AMBIENT, ambientTemperature, time(NULL));
+    dataRouter_WriteFloat(KEY_IR_TEMPERATURE_IR, ambientTemperature, time(NULL));
+}
+
+static void publishGyroSensorReading(float x, float y, float z)
+{
+    dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_X, x, time(NULL));
+    dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_Y, y, time(NULL));
+    dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_Z, z, time(NULL));
+}
+
+static void publishMagnetometerSensorReading(float x, float y, float z)
+{
+    dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_X, x, time(NULL));
+    dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_Y, y, time(NULL));
+    dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_Z, z, time(NULL));
+}
+
+static void publishAccelerometerSensorReading(float x, float y, float z)
+{
+    dataRouter_WriteFloat(KEY_MOVEMENT_ACCELEROMETER_X, x, time(NULL));
+    dataRouter_WriteFloat(KEY_MOVEMENT_ACCELEROMETER_Y, y, time(NULL));
+    dataRouter_WriteFloat(KEY_MOVEMENT_ACCELEROMETER_Z, z, time(NULL));
+}
+
+static void publishShockCalculation(float shock)
+{
+    dataRouter_WriteFloat(KEY_SHOCK, shock, time(NULL));
+}
+
+static void publishOrientationCalculation(int32_t orientation)
+{
+    dataRouter_WriteInteger(KEY_ORIENTATION, orientation, time(NULL));
+}
+
+static void publishBarometricPressureSensorReading(float temperature, float pressure)
+{
+    dataRouter_WriteFloat(KEY_BAROMETR_TEMPERATURE, temperature, time(NULL));
+    dataRouter_WriteFloat(KEY_BAROMETR_PRESSURE, pressure, time(NULL));
+}
+
+static void publishOpticalSensorReading(float luminosity)
+{
+    dataRouter_WriteFloat(KEY_OPTICAL_LUMINOSITY, luminosity, time(NULL));
+}
+
+static void publishHumiditySensorReading(float temperature, float humidity)
+{
+    dataRouter_WriteFloat(KEY_HUMIDITY_SENSOR_TEMPERATURE, temperature, time(NULL));
+    dataRouter_WriteFloat(KEY_HUMIDITY_SENSOR_HUMIDITY, humidity, time(NULL));
+}
+
+static void publishCompassAngleCalculation(float angle)
+{
+    dataRouter_WriteFloat(KEY_COMPASS, angle, time(NULL));
+}
+
 static int rawSensorDataStr2Value(char* line, int* len, int** value)
 {
     char *token, *newtoken;
     char* search = ":";
-    int   i;
     int   index = 0;
     int new;
 
@@ -216,13 +297,13 @@ static int rawSensorDataStr2Value(char* line, int* len, int** value)
 
     return 0;
 }
-int main(int argc, char* argv[])
+
+
+COMPONENT_INIT
 {
     FILE *fp, *alarmFp;
-    // const char *mac = "A0:E6:F8:C3:20:00";
-    char* mac = "A0:E6:F8:B6:1F:00";
-    // const char *mac = "A0:E6:F8:C1:76:06";
-    const char*   tool = "./gatttool";
+    char mac[(6 * 2) + ((6 - 1) * 1) + 1]; // digits + colons + terminator
+    const char*   tool = "/mnt/flash/sensorTag/gatttool";
     int           i, len;
     int           rawValue[MAX_SENSOR_RAW];
     int*          p    = rawValue;
@@ -236,7 +317,6 @@ int main(int argc, char* argv[])
     int           i1, i2, i3, index;
     unsigned int  d32_1, d32_2;
     double        compassAngle;
-    int           alarm;
     int           initFlag     = 0;
     enum AlarmCmd alarmCmd     = ALARMCMD_LED_OFF;
     enum AlarmCmd lastAlarmCmd = ALARMCMD_LED_OFF;
@@ -247,19 +327,12 @@ int main(int argc, char* argv[])
     char          json_result[2048];
     const char*   alarmFile = "./alarm.cmd";
 
-
-    if (argc > 1)
+    // Use this version if sandboxed
+    //le_result_t macReadResult = le_cfg_QuickGetString("/sensor_mac", mac, sizeof(mac), "");
+    le_result_t macReadResult = le_cfg_QuickGetString("/apps/bleSensorInterface/sensor_mac", mac, sizeof(mac), "");
+    if (macReadResult != LE_OK)
     {
-        if (argc == 2)
-        {
-            printf("argv[1] = %s\n", argv[1]);
-            mac = argv[1];
-        }
-        else
-        {
-            printf("Wrong parameter\n");
-            exit(0);
-        }
+        LE_FATAL("MAC address stored in configuration tree is too big");
     }
 
     snprintf(
@@ -375,6 +448,7 @@ int main(int argc, char* argv[])
             value1,
             value2);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
+        publishIrTemperatureSensorReading(value1, value2);
 
         /* Move Sensor */
         snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x39", tool, mac);
@@ -416,6 +490,7 @@ int main(int argc, char* argv[])
             value2,
             value3);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
+        publishGyroSensorReading(value1, value2, value3);
 
         data1 = rawValue[12] | rawValue[13] << 8;
         data2 = rawValue[14] | rawValue[15] << 8;
@@ -438,6 +513,7 @@ int main(int argc, char* argv[])
             value2,
             value3);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
+        publishMagnetometerSensorReading(value1, value2, value3);
 
         /* MagnetoVector = (x,y,0)
          * Angle = (atan(y/x)/Pi) * 360;
@@ -452,6 +528,7 @@ int main(int argc, char* argv[])
         snprintf(
             sensor, sizeof(sensor), "%s\"Compass\":{\"Angle\":%.2f},", json_result, compassAngle);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
+        publishCompassAngleCalculation(compassAngle);
 
         data1 = rawValue[6] | rawValue[7] << 8;
         data2 = rawValue[8] | rawValue[9] << 8;
@@ -474,6 +551,7 @@ int main(int argc, char* argv[])
             value2,
             value3);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
+        publishAccelerometerSensorReading(value1, value2, value3);
 
         /* Shock:
          * Like to set an alarm if a shock or rapid acceleration has happened to our sensor
@@ -505,6 +583,7 @@ int main(int argc, char* argv[])
             json_result,
             accDiff);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
+        publishShockCalculation(accDiff);
 
         lastValue1 = value1;
         lastValue2 = value2;
@@ -555,6 +634,7 @@ int main(int argc, char* argv[])
             i2,
             i3);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
+        publishOrientationCalculation(index);
 
         // snprintf(json_result, sizeof(json_result), "%s}\n", sensor);
         // printf("JSON:\n %s", json_result);
@@ -594,6 +674,7 @@ int main(int argc, char* argv[])
             value1,
             value2);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
+        publishBarometricPressureSensorReading(value1, value2);
 
         /* Optical sensor: */
         snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x41", tool, mac);
@@ -626,6 +707,7 @@ int main(int argc, char* argv[])
             json_result,
             value1);
         snprintf(json_result, sizeof(json_result), "%s\n", sensor);
+        publishOpticalSensorReading(value1);
 
         /* Humidity sensor: */
         snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x29", tool, mac);
@@ -661,6 +743,7 @@ int main(int argc, char* argv[])
             value1,
             value2);
         snprintf(json_result, sizeof(json_result), "%s}\n", sensor);
+        publishHumiditySensorReading(value1, value2);
 
         printf("%s", json_result);
         writeSensorDataToFile("sensorTag.json", json_result);
