@@ -1,0 +1,19 @@
+sources:
+{
+    killSwitch.cpp
+}
+
+cxxflags:
+{
+    -std=c++11
+}
+
+requires:
+{
+    api:
+    {
+        ${MANGOH_ROOT}/apps/DataRouter/dataRouter.api
+        //${MANGOH_ROOT}/samples/InnovationSummitDemo/CanOpen/canOpen.api
+    }
+}
+

@@ -1,0 +1,24 @@
+sandboxed: true
+start: auto
+
+executables:
+{
+    killSwitch = ( killSwitch )
+}
+
+processes:
+{
+    run:
+    {
+        ( killSwitch )
+    }
+
+    faultAction: restart
+}
+
+bindings:
+{
+    killSwitch.killSwitch.dataRouter -> dataRouter.dataRouter
+    //killSwitch.killSwitch.canOpen -> canOpen.canOpen
+}
+
