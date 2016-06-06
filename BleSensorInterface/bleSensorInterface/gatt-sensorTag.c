@@ -334,10 +334,15 @@ COMPONENT_INIT
     char          json_result[2048];
     const char*   alarmFile = "./alarm.cmd";
 
-    le_result_t macReadResult = le_cfg_QuickGetString("/sensorMac", mac, sizeof(mac), "");
+    le_result_t macReadResult =
+        le_cfg_QuickGetString("bleSensorInterface:/sensorMac", mac, sizeof(mac), "");
     if (macReadResult != LE_OK)
     {
         LE_FATAL("MAC address stored in configuration tree is too big");
+    }
+    else
+    {
+        LE_INFO("Read Sensortag MAC address (%s) from configTree", mac);
     }
 
     snprintf(
