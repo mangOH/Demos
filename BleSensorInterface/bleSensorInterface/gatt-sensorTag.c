@@ -28,6 +28,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include "alarms.h"
+
 enum AlarmCmd
 {
     ALARMCMD_LED_OFF   = 0,
@@ -225,11 +227,13 @@ static void publishAccelerometerSensorReading(float x, float y, float z)
 static void publishShockCalculation(float shock)
 {
     dataRouter_WriteFloat(KEY_SHOCK, shock, time(NULL));
+    checkShockAlarm(shock);
 }
 
 static void publishOrientationCalculation(int32_t orientation)
 {
     dataRouter_WriteInteger(KEY_ORIENTATION, orientation, time(NULL));
+    checkOrientationAlarm(orientation);
 }
 
 static void publishBarometricPressureSensorReading(float temperature, float pressure)
@@ -241,12 +245,15 @@ static void publishBarometricPressureSensorReading(float temperature, float pres
 static void publishOpticalSensorReading(float luminosity)
 {
     dataRouter_WriteFloat(KEY_OPTICAL_LUMINOSITY, luminosity, time(NULL));
+    checkLuminosityAlarm(luminosity);
 }
 
 static void publishHumiditySensorReading(float temperature, float humidity)
 {
     dataRouter_WriteFloat(KEY_HUMIDITY_SENSOR_TEMPERATURE, temperature, time(NULL));
     dataRouter_WriteFloat(KEY_HUMIDITY_SENSOR_HUMIDITY, humidity, time(NULL));
+    checkTemperatureAlarm(temperature);
+    checkHumidityAlarm(humidity);
 }
 
 static void publishCompassAngleCalculation(float angle)
@@ -405,6 +412,8 @@ COMPONENT_INIT
 
     printf("\n****** Sensor data available to proccess! ****** \n\n");
 
+    // Start a dataRouter session
+    dataRouter_SessionStart("eu.airvantage.net", "SwiBridge", true, DATAROUTER_CACHE);
     while (1)
     {
         snprintf(json_result, sizeof(json_result), "{");

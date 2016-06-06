@@ -1,6 +1,7 @@
 sources:
 {
     gatt-sensorTag.c
+    alarms.c
 }
 
 requires:
