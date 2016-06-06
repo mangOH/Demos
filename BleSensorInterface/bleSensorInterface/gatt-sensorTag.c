@@ -405,6 +405,7 @@ COMPONENT_INIT
                 flag = false;
             }
         }
+        pclose(fp);
         sleep(1);
     }
 
@@ -441,6 +442,7 @@ COMPONENT_INIT
                 PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
             }
         }
+        pclose(fp);
         data1 = rawValue[0] | rawValue[1] << 8;
         data2 = rawValue[2] | rawValue[3] << 8;
         sensorTmp007Convert(data1, data2, &value1, &value2);
@@ -481,6 +483,7 @@ COMPONENT_INIT
                 PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
             }
         }
+        pclose(fp);
         data1 = rawValue[0] | rawValue[1] << 8;
         data2 = rawValue[2] | rawValue[3] << 8;
         data3 = rawValue[4] | rawValue[5] << 8;
@@ -670,6 +673,7 @@ COMPONENT_INIT
                 PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
             }
         }
+        pclose(fp);
         d32_1  = rawValue[0] | rawValue[1] << 8 | rawValue[2] << 16;
         d32_2  = rawValue[3] | rawValue[4] << 8 | rawValue[5] << 16;
         value1 = calcBmp280(d32_1);
@@ -707,6 +711,7 @@ COMPONENT_INIT
                 PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
             }
         }
+        pclose(fp);
         data1  = rawValue[0] | rawValue[1] << 8;
         value1 = sensorOpt3001Convert(data1);
         PRINT_DEBUG("Optical sensor = %.2f\n", value1);
@@ -740,6 +745,7 @@ COMPONENT_INIT
                 PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
             }
         }
+        pclose(fp);
         data1 = rawValue[0] | rawValue[1] << 8;
         data2 = rawValue[2] | rawValue[3] << 8;
         sensorHdc1000Convert(data1, data2, &value1, &value2);
