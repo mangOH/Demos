@@ -1,0 +1,29 @@
+sources:
+{
+    mangoh_canOpen_iox1.c
+    can_ctrl.c
+    cop_api.c
+    cop_sdo.c
+    cop_nms.c
+    cop_lss.c
+    cop_lmt.c
+    cop_tcp.c
+    base64.c
+}
+
+cflags:
+{
+    -Wno-parentheses
+    -fno-strict-aliasing
+    -DPF_CAN=29
+    -DAF_CAN=PF_CAN
+    -D_COPAPI_EXTERN
+}
+
+provides:
+{
+    api:
+    {
+        ${MANGOH_ROOT}/samples/InnovationSummitDemo/KillSwitch/mangoh_canOpenIox1.api
+    }
+}

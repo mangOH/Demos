@@ -1,0 +1,42 @@
+# #############################################################################
+#
+# project   :  CAN - Controller Area Network.
+#
+# purpose   :  CANopen Commandline Tool (for phyCORE MPC5200B Tiny)
+#
+# copyright :  (C) 2008-2009, UV Software, Friedrichshafen
+#
+# compiler  :  GCC - GNU C Compiler (powerpc-603e-linux-gnu-gcc)
+#
+# author    :  Uwe Vogt, UV Software, Friedrichshafen
+#
+# e-mail    :  uwe.vogt@uv-software.de
+#
+# #############################################################################
+
+CC = /opt/OSELAS.Toolchain-1.1.1/powerpc-603e-linux-gnu/gcc-4.1.2-glibc-2.5-kernel-2.6.18/bin/powerpc-603e-linux-gnu-gcc
+
+CFLAGS	= -O2 -Wall -Wno-parentheses \
+	  -fno-strict-aliasing \
+	  -DPF_CAN=29 \
+	  -DAF_CAN=PF_CAN \
+	  -D_COPAPI_EXTERN \
+	  -I$(HOME)/Projects/MPC5200B-Tiny/OSELAS.BSP-Phytec-phyCORE-MPC5200B-tiny-6/build-target/linux-2.6.23.1/include
+
+PROGRAM	= can_open
+
+all:
+	make CC=$(CC) CFLAGS="$(CFLAGS)" all
+
+clean:
+	make clean
+
+install:
+	cp -f $(PROGRAM) $(HOME)/Projects/MPC5200B-Tiny/OSELAS.BSP-Phytec-phyCORE-MPC5200B-tiny-6/root/usr/bin
+
+distclean:
+	make distclean
+
+
+# ### $Id: Maketiny 30 2009-02-11 12:08:46Z saturn $ ###
+

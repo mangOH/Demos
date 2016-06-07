@@ -5,7 +5,8 @@ enum class OutputPin
 {
     LED_GREEN = 0,
     LED_RED = 1,
-    FAN = 2,
+    LED_OVERHEAT = 2,
+    FAN = 3,
 };
 
 enum class InputPin
@@ -37,15 +38,17 @@ public:
 
 private:
     void updateState(void);
-    void controlFan(bool on);
     void controlRedLed(bool on);
     void controlGreenLed(bool on);
+    void controlOverheatLed(bool on);
+    void controlFan(bool on);
+    void writeOutputs(void);
 
     State _state;
     BinaryInput _overheat;
     BinaryInput _localKillSwitch;
     BinaryInput _remoteKillSwitch;
-
+    uint8_t _pendingOutput;
 };
 
 

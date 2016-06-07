@@ -1,9 +1,10 @@
 sandboxed: true
-start: auto
+start: manual
 
 executables:
 {
     killSwitch = ( killSwitch )
+    canOpen = ( canOpen )
 }
 
 processes:
@@ -11,6 +12,7 @@ processes:
     run:
     {
         ( killSwitch )
+        ( canOpen )
     }
 
     faultAction: restart
@@ -19,6 +21,6 @@ processes:
 bindings:
 {
     killSwitch.killSwitch.dataRouter -> dataRouter.dataRouter
-    //killSwitch.killSwitch.canOpen -> canOpen.canOpen
+    killSwitch.killSwitch.mangoh_canOpenIox1 -> canOpen.canOpen.mangoh_canOpenIox1
 }
 

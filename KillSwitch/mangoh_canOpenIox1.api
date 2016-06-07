@@ -1,0 +1,40 @@
+FUNCTION le_result_t Init
+(
+);
+
+FUNCTION Free
+(
+);
+
+/*
+ * Read the value of Digital Input DI0~DI7, bit setting
+ *
+ * Object Dictionary Index 6000H: Read Digital Input 8Bit
+ *
+ * Return Value: 0~0xff
+ */
+FUNCTION uint8 DigitalInput_DI0_DI7
+(
+);
+
+/*
+ * Read the value of Digital Input DI8~DI15, bit setting
+ *
+ * Object Dictionary Index 6000H: Read Digital Input 8Bit
+ *
+ * Return Value: 0~0xff
+ */
+FUNCTION uint8 DigitalInput_DI8_DI15
+(
+);
+
+/*
+ * Write the value to Digital Output DI0~DI7, bit setting
+ *
+ * Object Dictionary Index 6200H: Write Digital Output 8Bit
+ *
+ */
+FUNCTION DigitalOutput_DO0_DO7
+(
+    uint8 value
+);

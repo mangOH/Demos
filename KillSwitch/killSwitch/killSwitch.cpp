@@ -14,7 +14,8 @@ DemoStateMachine::DemoStateMachine(void)
     : _state(State::STARTUP),
       _overheat(BinaryInput::UNKNOWN),
       _localKillSwitch(BinaryInput::UNKNOWN),
-      _remoteKillSwitch(BinaryInput::UNKNOWN)
+      _remoteKillSwitch(BinaryInput::UNKNOWN),
+      _pendingOutput(0)
 {
 }
 
@@ -62,9 +63,11 @@ void DemoStateMachine::updateState(void)
         {
             if (this->_state != State::DISABLED)
             {
-                this->controlFan(false);
                 this->controlRedLed(true);
                 this->controlGreenLed(false);
+                this->controlOverheatLed(false);
+                this->controlFan(false);
+                this->writeOutputs();
                 this->_state = State::DISABLED;
             }
         }
@@ -72,9 +75,11 @@ void DemoStateMachine::updateState(void)
         {
             if (this->_state != State::OPERATING_HOT)
             {
-                this->controlFan(true);
                 this->controlRedLed(false);
                 this->controlGreenLed(true);
+                this->controlOverheatLed(true);
+                this->controlFan(true);
+                this->writeOutputs();
                 this->_state = State::OPERATING_HOT;
             }
         }
@@ -82,53 +87,65 @@ void DemoStateMachine::updateState(void)
         {
             if (this->_state != State::OPERATING_NORMAL)
             {
-                this->controlFan(false);
                 this->controlRedLed(false);
                 this->controlGreenLed(true);
+                this->controlOverheatLed(false);
+                this->controlFan(false);
+                this->writeOutputs();
                 this->_state = State::OPERATING_NORMAL;
             }
         }
     }
 }
 
-void DemoStateMachine::controlFan(bool on)
-{
-    // TODO: write to can bus
-    dataRouter_WriteBoolean(KEY_FAN, on, time(NULL));
-}
-
 void DemoStateMachine::controlRedLed(bool on)
 {
-    // TODO: write to can bus
+    const uint8_t bit = 1 << static_cast<int>(OutputPin::LED_RED);
+    this->_pendingOutput = (this->_pendingOutput & (~bit)) | (on ? bit : 0);
     dataRouter_WriteBoolean(KEY_RED_LED, on, time(NULL));
 }
 
 void DemoStateMachine::controlGreenLed(bool on)
 {
-    // TODO: write to can bus
+    const uint8_t bit = 1 << static_cast<int>(OutputPin::LED_GREEN);
+    this->_pendingOutput = (this->_pendingOutput & (~bit)) | (on ? bit : 0);
     dataRouter_WriteBoolean(KEY_GREEN_LED, on, time(NULL));
 }
 
+void DemoStateMachine::controlOverheatLed(bool on)
+{
+    const uint8_t bit = 1 << static_cast<int>(OutputPin::LED_OVERHEAT);
+    this->_pendingOutput = (this->_pendingOutput & (~bit)) | (on ? bit : 0);
+    // no data router write for overheat LED
+}
 
+void DemoStateMachine::controlFan(bool on)
+{
+    const uint8_t bit = 1 << static_cast<int>(OutputPin::FAN);
+    this->_pendingOutput = (this->_pendingOutput & (~bit)) | (on ? bit : 0);
+    dataRouter_WriteBoolean(KEY_FAN, on, time(NULL));
+}
+
+void DemoStateMachine::writeOutputs(void)
+{
+    LE_INFO("Writing outputs as 0x%02X", this->_pendingOutput);
+    mangoh_canOpenIox1_DigitalOutput_DO0_DO7(this->_pendingOutput);
+}
 
 static void timerHandler(le_timer_Ref_t timer)
 {
-    uint8_t inputs[2] = {0, 0};
-    // TODO: waiting for CAN API
-    //le_result_t r = canOpen_ReadInputs(inputs, sizeof(inputs));
-    le_result_t r = LE_OK;
+    uint8_t inputs[2];
+    inputs[0] = mangoh_canOpenIox1_DigitalInput_DI0_DI7();
+    inputs[1] = mangoh_canOpenIox1_DigitalInput_DI8_DI15();
+    const uint16_t inputs16 = inputs[0] | (inputs[1] << 8);
+
+    const bool killSwitchOn = (((inputs16 >> static_cast<int>(InputPin::KILL_SWITCH)) & 1) == 0);
+    const bool overheat = ((inputs16 >> static_cast<int>(InputPin::OVERHEAT)) & 1);
+
+    LE_INFO("timerHandler read inputs as 0x%04X", inputs16);
+
     DemoStateMachine* stateMachine = static_cast<DemoStateMachine*>(le_timer_GetContextPtr(timer));
-    if (r == LE_OK)
-    {
-        const uint16_t inputs16 = inputs[0] | (inputs[1] << 8);
-        const bool killSwitchOn = ((inputs16 >> static_cast<int>(InputPin::KILL_SWITCH)) & 1);
-        const bool overheat = ((inputs16 >> static_cast<int>(InputPin::OVERHEAT)) & 1);
-        stateMachine->handleEventCanRead(killSwitchOn, overheat);
-    }
-    else
-    {
-        LE_ERROR("Failed to read CAN inputs");
-    }
+    stateMachine->handleEventCanRead(killSwitchOn, overheat);
 }
 
 static void powerUpdateHandler(
@@ -157,15 +174,18 @@ static void powerUpdateHandler(
 COMPONENT_INIT
 {
     dataRouter_SessionStart("eu.airvantage.net", "SwiBridge", true, DATAROUTER_CACHE);
+    LE_FATAL_IF(mangoh_canOpenIox1_Init() != LE_OK, "Couldn't initialize CAN");
 
     auto stateMachine = new DemoStateMachine();
     // Create a 1 second timer that repeats infinitely for polling the CAN inputs
     le_timer_Ref_t tr = le_timer_Create("killSwitch");
-    LE_ASSERT(le_timer_SetHandler(tr, &timerHandler));
-    LE_ASSERT(le_timer_SetContextPtr(tr, stateMachine));
+    LE_ASSERT(le_timer_SetHandler(tr, &timerHandler) == LE_OK);
+    LE_ASSERT(le_timer_SetContextPtr(tr, stateMachine) == LE_OK);
     LE_ASSERT(le_timer_SetMsInterval(tr, 1000) == LE_OK);
     LE_ASSERT(le_timer_SetRepeat(tr, 0) == LE_OK);
     LE_ASSERT(le_timer_Start(tr) == LE_OK);
 
     dataRouter_AddDataUpdateHandler(KEY_POWER_COMMAND, powerUpdateHandler, stateMachine);
+
+    LE_INFO("KillSwitch app started");
 }

@@ -1,0 +1,275 @@
+CANopen Commandline Tool (using berliOS socketCAN).
+
+Copyright (C) 2008-2009 UV Software, Friedrichshafen.
+
+Usage: can_open <interface> [<option>...]
+Options:
+ -g, --gateway=<port>         operate in gateway mode on <port>
+ -b, --baudrate=<baudrate>    bit timing in kbps (default=125)
+ -i, --id=<node-id>           node-id of CANopen Master (default=-1)
+     --net=<network>          set default network number (default=1)
+     --node=<node-id>         set default node-id (default=1)
+     --echo                   echo input stream to output stream
+     --prompt                 prefix input stream with a prompt
+     --syntax                 show input syntax and exit
+ -h, --help                   display this help and exit
+     --version                show version information and exit
+Examples:
+ 1. Local mode:     can_open <socket-can> --prompt
+ 2.1 Gateway mode:  can_open <socket-can> --gateway <port> --echo
+ 2.2 Remote mode:   can_open <ip-addr>:<port> --prompt
+In local mode and in remote mode press ^D to leave the interactive input.
+In gateway mode press ^C to close the port and exiting the program.
+
+1. SDO access commands
+
+1.1 Upload SDO command
+
+<upload-sdo-request>  ::= '['<sequence>']' [[<net>] <node>] ("read"|'r') <index> <sub-index> <datatype>
+
+<upload-sdo-response> ::= '['<sequence>']' <value> |
+                          '['<sequence>']' "Error:" <sdo-abort-code> |
+                          '['<sequence>']' "Error:" <error-code>
+
+1.2 Download SDO command
+
+<download-sdo-request>  ::= '['<sequence>']' [[<net>] <node>] ("write"|'w') <index> <sub-index> <datatype> <value>
+
+<download-sdo-response> ::= '['<sequence>']' "OK" |
+                            '['<sequence>']' "Error:" <sdo-abort-code> |
+                            '['<sequence>']' "Error:" <error-code>
+
+1.3 Configure SDO timeout command
+
+<set-sdo-timeout-request>  ::= '['<sequence>']' [<net>] "set" "sdo_timeout" <milliseconds>
+
+<set-sdo-timeout-response> ::= '['<sequence>']' "OK" |
+                               '['<sequence>']' "Error:" <error-code>
+
+2. PDO access commands
+
+2.1 Configure RPDO command
+
+<set-rpdo-request>  ::= '['<sequence>']' [[<net>] <node>] "set" "rpdo" ...
+
+<set-rpdo-response> ::= '['<sequence>']' "Error: 100"
+
+2.2 Configure TPDO command
+
+<set-tpdo-request>  ::= '['<sequence>']' [[<net>] <node>] "set" "tpdo" ...
+
+<set-tpdo-response> ::= '['<sequence>']' "Error: 100"
+
+2.3 Read PDO data command
+
+<read-pdo-request>  ::= '['<sequence>']' [<net>] ("read"|'r') ("pdo"|'p') ...
+
+<read-pdo-response> ::= '['<sequence>']' "Error: 100"
+
+3. CANopen NMT commands
+
+3.1 Start node command
+
+<start-node-request>  ::= '['<sequence>']' [[<net>] <node>] "start"
+
+<start-node-response> ::= '['<sequence>']' "OK" |
+                          '['<sequence>']' "Error:" <error-code>
+
+3.2 Stop node command
+
+<stop-node-request>  ::= '['<sequence>']' [[<net>] <node>] "stop"
+
+<stop-node-response> ::= '['<sequence>']' "OK" |
+                         '['<sequence>']' "Error:" <error-code>
+
+3.3 Set node to pre-operational command
+
+<set-pre-operational-request>  ::= '['<sequence>']' [[<net>] <node>] ("preoperational"|"preop")
+
+<set-pre-operational-response> ::= '['<sequence>']' "OK" |
+                                   '['<sequence>']' "Error:" <error-code>
+
+3.4 Reset node command
+
+<reset-node-request>  ::= '['<sequence>']' [[<net>] <node>] "reset" "node"
+
+<reset-node-response> ::= '['<sequence>']' "OK" |
+                          '['<sequence>']' "Error:" <error-code>
+
+3.5 Reset communication command
+
+<reset-communication-request>  ::= '['<sequence>']' [[<net>] <node>] "reset" ("communication"|"comm")
+
+<reset-communication-response> ::= '['<sequence>']' "OK" |
+                                   '['<sequence>']' "Error:" <error-code>
+
+3.6 Enable node guarding command
+
+<enable-guarding-request>  ::= '['<sequence>']' [[<net>] <node>] "enable" "guarding" <guarding-time> <lifetime-factor>
+
+<enable-guarding-response> ::= '['<sequence>']' "Error: 100"
+
+3.7 Disable node guarding command
+
+<disable-guarding-request>  ::= '['<sequence>']' [[<net>] <node>] "disable" "guarding"
+
+<disable-guarding-response> ::= '['<sequence>']' "Error: 100"
+
+3.8 Start heartbeat consumer command
+
+<enable-heartbeat-request>  ::= '['<sequence>']' [[<net>] <node>] "enable" "heartbeat" <heartbeat-time>
+
+<enable-heartbeat-response> ::= '['<sequence>']' "Error: 100"
+
+3.9 Stop heartbeat consumer command
+
+<disable-heartbeat-request>  ::= '['<sequence>']' [[<net>] <node>] "disable" "heartbeat"
+
+<disable-heartbeat-response> ::= '['<sequence>']' "Error: 100"
+
+4. Device failure management commands
+
+4.1 Read device error command
+
+<read-error-request>  ::= '['<sequence>']' [[<net>] <node>] ("read"|'r') "error"
+
+<read-error-response> ::= '['<sequence>']' "Error: 100"
+
+5. CANopen interface configuration commands
+
+5.1 Initialize gateway command
+
+<initialize-request>  ::= '['<sequence>']' [<net>] "init" <baudrate-index>
+
+<initialize-response> ::= '['<sequence>']' "OK" |
+                          '['<sequence>']' "Error:" <error-code>
+
+5.2 Store configuration command
+
+<store-configuration-request>  ::= '['<sequence>']' [<net>] "store" ["CFG" | "PDO" | "SDO" | "NMT"]
+
+<store-configuration-response> ::= '['<sequence>']' "Error: 100"
+
+5.3 Restore configuration command
+
+<restore-configuration-request>  ::= '['<sequence>']' [<net>] "restore" ["CFG" | "PDO" | "SDO" | "NMT"]
+
+<restore-configuration-response> ::= '['<sequence>']' "Error: 100"
+
+5.4 Set heartbeat producer command
+
+<set-heartbeat-request>  ::= '['<sequence>']' [<net>] "set" "heartbeat" <heartbeat-time>
+
+<set-heartbeat-response> ::= '['<sequence>']' "Error: 100"
+
+5.5 Set node-id command
+
+<set-id-request>  ::= '['<sequence>']' [<net>] "set" "id" <node-id>
+
+<set-id-response> ::= '['<sequence>']' "Error: 100"
+
+6. Gateway management commands
+
+6.1 Set default network command
+
+<set-network-request>  ::= '['<sequence>']' "set" "network" <network>
+
+<set-network-response> ::= '['<sequence>']' "OK" |
+                           '['<sequence>']' "Error:" <error-code>
+
+6.2 Set default node-id command
+
+<set-node-request>  ::= '['<sequence>']' [<net>] "set" "node" <node>
+
+<set-node-response> ::= '['<sequence>']' "OK" |
+                        '['<sequence>']' "Error:" <error-code>
+
+6.3 Get version command
+
+<get-version-request>  ::= '['<sequence>']' "info" "version"
+
+<get-version-response> ::= '['<sequence>']' <vendor-id> <product-code> <revision-number> <serial-number> <gateway-class> <protocol-version> <implementation-class> |
+                           '['<sequence>']' "Error:" <error-code>
+
+7. Vendor-specific commands
+
+7.1 Send CAN message command
+
+<send-message-request>  ::= '['<sequence>']' [<net>] "send" <cob-id> <length> {<value>}*
+
+<send-message-response> ::= '['<sequence>']' "OK" |
+                            '['<sequence>']' "Error:" <error-code>
+
+7.2 Request CAN message command
+
+<remote-message-request>  ::= '['<sequence>']' [<net>] "send" <cob-id> "rtr" <length>
+
+<remote-message-response> ::= '['<sequence>']' <length> {<value>}* |
+                              '['<sequence>']' "Error:" <error-code>
+
+7.3 Read CAN message queue command
+
+<read-message-request>  ::= '['<sequence>']' [<net>] "recv"
+
+<read-message-response> ::= '['<sequence>']' <cob-id> <length> {<value>}* |
+                            '['<sequence>']' "OK" |
+                            '['<sequence>']' "Error:" <error-code>
+
+7.4 Wait command
+
+<wait-request>  ::= '['<sequence>']' [<net>] "wait" <milliseconds>
+
+<wait-response> ::= '['<sequence>']' "OK" |
+                    '['<sequence>']' "Error:" <error-code>
+
+7.5 Get information command
+
+<get-information-request>  ::= '['<sequence>']' [<net>] "info" ("hardware" | "firmware" | "software" | "copyright")
+
+<get-information-response> ::= '['<sequence>']' <string> |
+                               '['<sequence>']' "Error:" <error-code>
+
+8. Miscellaneous
+
+8.1 Supported data types
+
+"i8"  = 8-bit signed integer value
+"i16" = 16-bit signed integer value
+"i32" = 32-bit signed integer value
+"u8"  = 8-bit unsigned integer value
+"u16" = 16-bit unsigned integer value
+"u32" = 32-bit unsigned integer value
+"t"   = time of day: days milliseconds
+"td"  = time difference: days milliseconds
+"vs"  = visible string
+"os"  = octet string
+"d"   = domain
+
+8.2 Value encoding
+
+Numerical values have to be encoded according to ISO/IEC 9899 (ANSI C).
+A visible strings with whitespaces have to be enclosed with double quotes.
+A double quote within a visible string have to be escaped by second double quote.
+Values of type domain or octet string have to be encoded according to RfC 2045 (MIME).
+
+8.3 Error codes
+
+"Error: 100" = Request not supported
+"Error: 101" = Syntax error
+"Error: 102" = Request not executed
+"Error: 103" = Time-out occurred
+"Error: 999" = Fatal error
+
+9. Further information
+
+CiA DS-301, CANopen application layer and communication profile, version 4.02
+CiA DS-309, Interfacing CANopen with TCP/IP, part 1 and 3, version 1.1
+
+
+This software is freeware without any warranty or support!
+
+-------------------------------------------------------------------------
+Uwe Vogt,  UV Software,  Steinaecker 28,  88048 Friedrichshafen,  Germany
+Fon: +49-7541-6041530, Fax. +49-1803-551809359, Cell fon: +49-170-3801903
+E-Mail: uwe.vogt@uv-software.de, Internet URL: http://www.uv-software.de/
+
