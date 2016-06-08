@@ -18,6 +18,14 @@ processes:
     faultAction: restart
 }
 
+bundles:
+{
+    file:
+    {
+        [x] script/can-init.sh /bin/
+    }
+}
+
 bindings:
 {
     killSwitch.killSwitch.dataRouter -> dataRouter.dataRouter
