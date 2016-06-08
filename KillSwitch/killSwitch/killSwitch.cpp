@@ -50,13 +50,17 @@ void DemoStateMachine::handleEventCanRead(bool localKillSwitchIsOn, bool overhea
     {
         this->updateState();
     }
+    else
+    {
+        LE_INFO("CAN read event handled, but no state update required");
+    }
 }
 
 void DemoStateMachine::updateState(void)
 {
     // Make sure that at least one CAN read is complete
-    if (this->_overheat != BinaryInput::INACTIVE &&
-        this->_localKillSwitch != BinaryInput::INACTIVE)
+    if (this->_overheat != BinaryInput::UNKNOWN &&
+        this->_localKillSwitch != BinaryInput::UNKNOWN)
     {
         if (this->_localKillSwitch == BinaryInput::ACTIVE ||
             this->_remoteKillSwitch == BinaryInput::ACTIVE)
@@ -68,6 +72,7 @@ void DemoStateMachine::updateState(void)
                 this->controlOverheatLed(false);
                 this->controlFan(false);
                 this->writeOutputs();
+                LE_DEBUG("Changing state: %d->%d", this->_state, State::DISABLED);
                 this->_state = State::DISABLED;
             }
         }
@@ -80,6 +85,7 @@ void DemoStateMachine::updateState(void)
                 this->controlOverheatLed(true);
                 this->controlFan(true);
                 this->writeOutputs();
+                LE_DEBUG("Changing state: %d->%d", this->_state, State::OPERATING_HOT);
                 this->_state = State::OPERATING_HOT;
             }
         }
@@ -92,6 +98,7 @@ void DemoStateMachine::updateState(void)
                 this->controlOverheatLed(false);
                 this->controlFan(false);
                 this->writeOutputs();
+                LE_DEBUG("Changing state: %d->%d", this->_state, State::OPERATING_NORMAL);
                 this->_state = State::OPERATING_NORMAL;
             }
         }
@@ -128,7 +135,7 @@ void DemoStateMachine::controlFan(bool on)
 
 void DemoStateMachine::writeOutputs(void)
 {
-    LE_INFO("Writing outputs as 0x%02X", this->_pendingOutput);
+    LE_DEBUG("Writing outputs as 0x%02X", this->_pendingOutput);
     mangoh_canOpenIox1_DigitalOutput_DO0_DO7(this->_pendingOutput);
 }
 
@@ -142,7 +149,7 @@ static void timerHandler(le_timer_Ref_t timer)
     const bool killSwitchOn = (((inputs16 >> static_cast<int>(InputPin::KILL_SWITCH)) & 1) == 0);
     const bool overheat = ((inputs16 >> static_cast<int>(InputPin::OVERHEAT)) & 1);
 
-    LE_INFO("timerHandler read inputs as 0x%04X", inputs16);
+    LE_DEBUG("timerHandler read inputs as 0x%04X", inputs16);
 
     DemoStateMachine* stateMachine = static_cast<DemoStateMachine*>(le_timer_GetContextPtr(timer));
     stateMachine->handleEventCanRead(killSwitchOn, overheat);
@@ -186,6 +193,4 @@ COMPONENT_INIT
     LE_ASSERT(le_timer_Start(tr) == LE_OK);
 
     dataRouter_AddDataUpdateHandler(KEY_POWER_COMMAND, powerUpdateHandler, stateMachine);
-
-    LE_INFO("KillSwitch app started");
 }
