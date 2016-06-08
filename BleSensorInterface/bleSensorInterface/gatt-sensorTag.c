@@ -81,14 +81,14 @@ static int writeSensorDataToFile(const char* fileName, char* data)
         exit(1);
 
     sprintf(path, "%s", fileName);
-    //	printf("writeSensorDataToFile: %s\n", path);
+    // printf("writeSensorDataToFile: %s\n", path);
     fp = fopen(fileName, "w");
     if (fp == NULL)
     {
         printf("Error!");
         exit(1);
     }
-    //	printf("\tWriting data: %s\n", data);
+    // printf("\tWriting data: %s\n", data);
     fprintf(fp, "%s", data);
 
     fclose(fp);
@@ -272,15 +272,15 @@ static int rawSensorDataStr2Value(char* line, int* len, int** value)
 
     // Token will point to "Characteristic value/descriptor".
     token = strtok(line, search);
-    //	printf("token: %s\n", token);
+    // printf("token: %s\n", token);
 
     // Token will point to "2d ff .....".
     token = strtok(NULL, search);
-    //	printf("token: %s\n", token);
+    // printf("token: %s\n", token);
 
     search   = " ";
     newtoken = strtok(token, search);
-    //	printf("new token: %s\n", newtoken);
+    // printf("new token: %s\n", newtoken);
     sscanf(newtoken, "%x", &new);
     *(*value + index) = new;
     index++;
@@ -290,10 +290,10 @@ static int rawSensorDataStr2Value(char* line, int* len, int** value)
         newtoken = strtok(NULL, search);
         if (newtoken == NULL)
         {
-            //			printf("empty reached!!!\n");
+            // printf("empty reached!!!\n");
             break;
         }
-        //		printf("new token: %s\n", newtoken);
+        // printf("new token: %s\n", newtoken);
         sscanf(newtoken, "%x", &new);
         if (index >= MAX_SENSOR_RAW)
             break;
@@ -310,7 +310,7 @@ COMPONENT_INIT
 {
     FILE *fp, *alarmFp;
     char mac[(6 * 2) + ((6 - 1) * 1) + 1]; // digits + colons + terminator
-    const char*   tool = "/mnt/flash/sensorTag/gatttool";
+    const char*   tool = "/legato/systems/current/bin/gatttool";
     int           i, len;
     int           rawValue[MAX_SENSOR_RAW];
     int*          p    = rawValue;
@@ -571,7 +571,7 @@ COMPONENT_INIT
         /* Shock:
          * Like to set an alarm if a shock or rapid acceleration has happened to our sensor
          *
-         * Compute difference between vectors (SensAcc2 – SensAcc1)
+         * Compute difference between vectors (SensAcc2 - SensAcc1)
          * SensAccDiff = (x2-x1, y2-y1, z2-z1) = (dx,dy,dz)
 
          * Compute vector magnitude
