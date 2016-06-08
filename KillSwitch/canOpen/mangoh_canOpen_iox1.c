@@ -23,6 +23,11 @@
 #include <linux/can.h>
 
 //#define __DEBUG__    1
+#ifdef __DEBUG__
+#define PRINT_DEBUG(_fs_, ...) printf(_fs_, __VA_ARGS__)
+#else
+#define PRINT_DEBUG(_fs_, ...)
+#endif
 
 #define NODE_ID            255
 #define DEFAULT_NET        1
@@ -35,6 +40,8 @@
 #define DO0_DO7_CMD  "1 w 0x6200 1 u8"
 
 static int cnt = 1;
+
+static unsigned char genericDigitalInput(const char* cmd);
 
 
 le_result_t mangoh_canOpenIox1_Init(void)
@@ -56,42 +63,15 @@ void mangoh_canOpenIox1_Free(void)
     cop_exit();
 }
 
+
 unsigned char mangoh_canOpenIox1_DigitalInput_DI0_DI7(void)
 {
-    unsigned char rt;
-    char buf[64];
-    struct _cop_tcp_settings settings = {DEFAULT_NET, DEFAULT_NODE, NODE_ID};
-
-    snprintf(buf, sizeof(buf), "[%d] %s", cnt++, DI0_DI7_CMD);
-#ifdef __DEBUG__
-    printf("\t%s cmd: %s\n", __FUNCTION__, buf);
-#endif
-    cop_tcp_parse(&buf[0], &settings, &buf[0], sizeof(buf));
-#ifdef __DEBUG__
-    printf("\t%s: result:%s\n", __FUNCTION__, buf);
-#endif
-    rt = (unsigned char)strtol(buf+4, NULL, 0);
-
-    return rt;
+    return genericDigitalInput(DI0_DI7_CMD);
 }
 
 unsigned char mangoh_canOpenIox1_DigitalInput_DI8_DI15(void)
 {
-    int rt;
-    char buf[64];
-    struct _cop_tcp_settings settings = {DEFAULT_NET, DEFAULT_NODE, NODE_ID};
-
-    snprintf(buf, sizeof(buf), "[%d] %s", cnt++, DI8_DI15_CMD);
-#ifdef __DEBUG__
-    printf("\t%s cmd: %s\n", __FUNCTION__, buf);
-#endif
-    cop_tcp_parse(&buf[0], &settings, &buf[0], sizeof(buf));
-#ifdef __DEBUG__
-    printf("\t%s: result:%s\n", __FUNCTION__, buf);
-#endif
-    rt = (unsigned char)strtol(buf+4, NULL, 0);
-
-    return rt;
+    return genericDigitalInput(DI8_DI15_CMD);
 }
 
 void mangoh_canOpenIox1_DigitalOutput_DO0_DO7(unsigned char value)
@@ -100,15 +80,43 @@ void mangoh_canOpenIox1_DigitalOutput_DO0_DO7(unsigned char value)
     struct _cop_tcp_settings settings = {DEFAULT_NET, DEFAULT_NODE, NODE_ID};
 
     snprintf(buf, sizeof(buf), "[%d] %s 0x%x", cnt++, DO0_DO7_CMD, value);
-#ifdef __DEBUG__
-    printf("\t%s cmd: %s\n", __FUNCTION__, buf);
-#endif
+    PRINT_DEBUG("\t%s cmd: %s\n", __FUNCTION__, buf);
     cop_tcp_parse(&buf[0], &settings, &buf[0], sizeof(buf));
-#ifdef __DEBUG__
-    printf("\t%s: result:%s\n", __FUNCTION__, buf);
-#endif
+    PRINT_DEBUG("\t%s: result:%s\n", __FUNCTION__, buf);
 
     return;
+}
+
+static unsigned char genericDigitalInput(const char* cmd)
+{
+    unsigned char rt;
+    char* token;
+    const char* search = " ";
+    char buf[32];
+    struct _cop_tcp_settings settings = {DEFAULT_NET, DEFAULT_NODE, NODE_ID};
+
+    while (true)
+    {
+        snprintf(buf, sizeof(buf), "[%d] %s", cnt++, cmd);
+        PRINT_DEBUG("\t%s cmd: %s\n", __FUNCTION__, buf);
+        cop_tcp_parse(&buf[0], &settings, &buf[0], sizeof(buf));
+        PRINT_DEBUG("\t%s: result:%s\n", __FUNCTION__, buf);
+        token = strtok(buf, search);
+        PRINT_DEBUG("token 1 = %s\n", token);
+        token = strtok(NULL, search);
+        PRINT_DEBUG("token 2 = %s, %c\n", token, token[0]);
+        if (token[0] == 'E')
+        {
+            PRINT_DEBUG("Got error result, try read again!\n");
+        }
+        else
+        {
+            break;
+        }
+    }
+    rt = (unsigned char)strtol(token, NULL, 0);
+
+    return rt;
 }
 
 COMPONENT_INIT
