@@ -1,0 +1,35 @@
+
+sandboxed: false
+version:   1.0
+start: manual
+
+bundles:
+{
+    file:
+    {
+        [x] bin/hciattach     /bin/
+        [x] bin/hciconfig     /bin/
+        [x] bin/hcitool       /bin/
+        [x] bin/gatttool      /bin/
+        [x] script/bt-init.sh /bin/
+    }
+
+    dir:
+    {
+        lib  /
+    }
+}
+
+
+processes:
+{
+    envVars:
+    {
+        EXTRA_PATH = /legato/systems/current/bin:/sbin
+    }
+
+    run:
+    {
+        ( bt-init.sh )
+    }
+}
