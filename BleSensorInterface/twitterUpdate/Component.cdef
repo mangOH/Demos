@@ -1,0 +1,14 @@
+
+sources:
+{
+    twitterUpdate.c
+}
+
+requires:
+{
+    api:
+    {
+        $MANGOH_ROOT/apps/SocialService/interfaces/twitter.api
+        $MANGOH_ROOT/apps/DataRouter/dataRouter.api
+    }
+}
