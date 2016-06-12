@@ -796,8 +796,14 @@ COMPONENT_INIT
             bool doorLedOn;
             uint32_t buzzerTimestamp;
             uint32_t doorLedTimestamp;
-            dataRouter_ReadBoolean(KEY_BUZZER, &buzzerOn, &buzzerTimestamp);
-            dataRouter_ReadBoolean(KEY_DOOR_LED, &doorLedOn, &doorLedTimestamp);
+            // TODO: fake data for now because it seems like the alarm turns on if the values don't
+            // exist in the dataRouter
+            buzzerOn = false;
+            doorLedOn = false;
+            buzzerTimestamp = ~0;
+            doorLedTimestamp = ~0;
+            //dataRouter_ReadBoolean(KEY_BUZZER, &buzzerOn, &buzzerTimestamp);
+            //dataRouter_ReadBoolean(KEY_DOOR_LED, &doorLedOn, &doorLedTimestamp);
             // Bits
             //  0 -> Red LED
             //  1 -> Green LED
