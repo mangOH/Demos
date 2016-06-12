@@ -92,7 +92,7 @@ void checkOrientationAlarm(int32_t orientation)
     static bool alarmOn = false;
     static bool anyUpdateReceived = false;
 
-    const int32_t upright = 3;
+    const int32_t upright = 5;
     bool newAlarmOn = orientation != upright;
     if (!anyUpdateReceived || newAlarmOn != alarmOn)
     {
