@@ -7,6 +7,7 @@
 #define DATA_ALARM_ORIENTATION "container.alarmOrientation"
 
 
+/*
 static void OnAlarmRaised
 (
     dataRouter_DataType_t type,
@@ -69,14 +70,15 @@ static void OnAlarmRaised
 
     twitter_Tweet(messageBuffer);
 }
+*/
 
 
 
 COMPONENT_INIT
 {
-    dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
+    //dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
 
-    dataRouter_AddDataUpdateHandler(DATA_ALARM_SHOCK, OnAlarmRaised, NULL);
-    dataRouter_AddDataUpdateHandler(DATA_ALARM_TEMPERATURE, OnAlarmRaised, NULL);
-    dataRouter_AddDataUpdateHandler(DATA_ALARM_ORIENTATION, OnAlarmRaised, NULL);
+    //dataRouter_AddDataUpdateHandler(DATA_ALARM_SHOCK, OnAlarmRaised, NULL);
+    //dataRouter_AddDataUpdateHandler(DATA_ALARM_TEMPERATURE, OnAlarmRaised, NULL);
+    //dataRouter_AddDataUpdateHandler(DATA_ALARM_ORIENTATION, OnAlarmRaised, NULL);
 }
