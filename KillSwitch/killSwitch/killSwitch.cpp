@@ -5,8 +5,8 @@
 #define KEY_RED_LED "industrial.redLed"
 #define KEY_GREEN_LED "industrial.greenLed"
 #define KEY_FAN "industrial.fan"
-#define KEY_KILL_SWITCH "industrial.killSwitch"
-#define KEY_EVENT_SWITCH "industrial.eventSwitch"
+#define KEY_KILL_SWITCH "industrial.switch"
+#define KEY_OVERHEAT_SWITCH "industrial.overheatSwitch"
 #define KEY_POWER_COMMAND "industrial.power"
 
 
@@ -42,7 +42,7 @@ void DemoStateMachine::handleEventCanRead(bool localKillSwitchIsOn, bool overhea
     if (newOverheat != this->_overheat)
     {
         this->_overheat = newOverheat;
-        dataRouter_WriteBoolean(KEY_EVENT_SWITCH, overheat, time(NULL));
+        dataRouter_WriteBoolean(KEY_OVERHEAT_SWITCH, overheat, time(NULL));
         stateCheckRequired = true;
     }
 
