@@ -3,9 +3,9 @@
     xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0"
     type="io.mangoh.demo.container.app"
     name="mangOH Container Demo"
-    revision="1.0.0">
+    revision="1.0.2">
   <capabilities>
-    <communication><protocol comm-id="SERIAL" type="MQTT" /></communication>
+    <communication><protocol comm-id="IMEI" type="MQTT" /></communication>
     <data>
       <encoding type="MQTT">
         <asset default-label="Container" id="container">
