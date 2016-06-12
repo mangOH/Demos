@@ -30,13 +30,6 @@
 
 #include "alarms.h"
 
-enum AlarmCmd
-{
-    ALARMCMD_LED_OFF   = 0,
-    ALARMCMD_LED_RED   = 1,
-    ALARMCMD_LED_GREEN = 2,
-    ALARMCMD_BUZZ      = 4
-};
 
 // DataRouter/AirVantage keys
 #define KEY_IR_TEMPERATURE_AMBIENT      "other.irTemperatureAmbient"
@@ -58,6 +51,9 @@ enum AlarmCmd
 #define KEY_HUMIDITY_SENSOR_TEMPERATURE "container.temperature"
 #define KEY_HUMIDITY_SENSOR_HUMIDITY    "container.humidity"
 #define KEY_COMPASS                     "container.compass"
+// TODO: check if these keys are correct for "commands" in the app model
+#define KEY_BUZZER                      "container.startBuzzer"
+#define KEY_DOOR_LED                    "container.doorLED"
 
 
 #define DEBUG_OUTPUT
@@ -316,7 +312,7 @@ static int rawSensorDataStr2Value(char* line, int* len, int** value)
 
 COMPONENT_INIT
 {
-    FILE *fp, *alarmFp;
+    FILE *fp;
     char mac[(6 * 2) + ((6 - 1) * 1) + 1]; // digits + colons + terminator
     const char*   tool = "/legato/systems/current/bin/gatttool";
     int           i, len;
@@ -332,16 +328,13 @@ COMPONENT_INIT
     int           i1, i2, i3, index;
     unsigned int  d32_1, d32_2;
     double        compassAngle;
-    int           initFlag     = 0;
-    enum AlarmCmd alarmCmd     = ALARMCMD_LED_OFF;
-    enum AlarmCmd lastAlarmCmd = ALARMCMD_LED_OFF;
     char          data[64];
     char          path[256];
     char          cmd[1024];
     char          sensor[2048];
     char          json_result[2048];
-    const char*   alarmFile = "./alarm.cmd";
     unsigned int numReadings = 0;
+    const uint32_t startupTimestamp = time(NULL);
 
     le_result_t macReadResult =
         le_cfg_QuickGetString("bleSensorInterface:/sensorMac", mac, sizeof(mac), "");
@@ -373,6 +366,11 @@ COMPONENT_INIT
         tool,
         mac);
     printf("Running: %s\n", cmd);
+    system(cmd);
+
+    // Initially turn the LEDs and buzzer off
+    snprintf(cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n 00;", tool, mac);
+    PRINT_DEBUG("Init Alarm cmd: %s, all off", cmd);
     system(cmd);
 
     /* Wait until all sensor RAW data ready to be read */
@@ -418,12 +416,6 @@ COMPONENT_INIT
         sleep(1);
     }
 
-    alarmFp = fopen(alarmFile, "w+");
-    if (alarmFp == NULL)
-    {
-        printf("!!!!!!Failed to open %s!\n", alarmFile);
-    }
-    PRINT_DEBUG("Successfully open Alarm file %s!\n", alarmFile);
 
     printf("\n****** Sensor data available to proccess! ****** \n\n");
 
@@ -795,58 +787,33 @@ COMPONENT_INIT
         printf("%s", json_result);
         writeSensorDataToFile("sensorTag.json", json_result);
 
-        if (initFlag == 0)
+        // Update SensorTag outputs based on dataRouter variables.  Ideally we would be registering
+        // a dataRouter update handler to listen for updates to the appropriate variables, but that
+        // is not possible in this program because of the fact that it is structured in a way that
+        // COMPONENT_INIT never completes.
         {
-            snprintf(cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n 00;", tool, mac);
-            printf("\nInit Alarm cmd: %s, LED off\n\n", cmd);
+            bool buzzerOn;
+            bool doorLedOn;
+            uint32_t buzzerTimestamp;
+            uint32_t doorLedTimestamp;
+            dataRouter_ReadBoolean(KEY_BUZZER, &buzzerOn, &buzzerTimestamp);
+            dataRouter_ReadBoolean(KEY_DOOR_LED, &doorLedOn, &doorLedTimestamp);
+            // Bits
+            //  0 -> Red LED
+            //  1 -> Green LED
+            //  2 -> Buzzer
+            const uint8_t outputValue =
+            (
+                (((buzzerOn && buzzerTimestamp > startupTimestamp) ? 1 : 0) << 2) |
+                (((doorLedOn && doorLedTimestamp > startupTimestamp) ? 1 : 0) << 0)
+            );
+            char cmd[256];
+            snprintf(
+                cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n %02X;", tool, mac, outputValue);
             system(cmd);
-            initFlag = 1;
-        }
-
-        /* Read the output a line at a time - output it. */
-        if (alarmFp)
-        {
-            fseek(alarmFp, 0, SEEK_SET);
-            while (fgets(path, sizeof(path) - 1, alarmFp) != NULL)
-            {
-                alarmCmd = atoi(path);
-                PRINT_DEBUG("***********Alarm FP: path = %s, alarm=%d\n", path, alarmCmd);
-            }
-            if (lastAlarmCmd == alarmCmd)
-                continue;
-            lastAlarmCmd = alarmCmd;
-
-            switch (alarmCmd)
-            {
-                case ALARMCMD_LED_OFF:
-                default:
-                    snprintf(cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n 00;", tool, mac);
-                    printf("\nReceived and run Alarm cmd: %s, LED off\n\n", cmd);
-                    system(cmd);
-                    break;
-
-                case ALARMCMD_LED_RED:
-                    snprintf(cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n 01;", tool, mac);
-                    printf("\nReceived and run Alarm cmd: %s, LED red\n\n", cmd);
-                    system(cmd);
-                    break;
-
-                case ALARMCMD_LED_GREEN:
-                    snprintf(cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n 02;", tool, mac);
-                    printf("\nReceived and run Alarm cmd: %s, LED green\n\n", cmd);
-                    system(cmd);
-                    break;
-
-                case ALARMCMD_BUZZ:
-                    snprintf(cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n 04;", tool, mac);
-                    printf("\nReceived and run Alarm cmd: %s, Buzz\n\n", cmd);
-                    system(cmd);
-                    break;
-            }
         }
         sleep(1);
     }
     /* close */
-    fclose(alarmFp);
     pclose(fp);
 }
