@@ -197,25 +197,31 @@ float sensorOpt3001Convert(int16_t rawData)
     // return m * (0.01 * pow(2.0,e));
 }
 
+/*
 static void publishIrTemperatureSensorReading(float ambientTemperature, float irTemperature)
 {
     dataRouter_WriteFloat(KEY_IR_TEMPERATURE_AMBIENT, ambientTemperature, time(NULL));
     dataRouter_WriteFloat(KEY_IR_TEMPERATURE_IR, ambientTemperature, time(NULL));
 }
+*/
 
+/*
 static void publishGyroSensorReading(float x, float y, float z)
 {
     dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_X, x, time(NULL));
     dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_Y, y, time(NULL));
     dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_Z, z, time(NULL));
 }
+*/
 
+/*
 static void publishMagnetometerSensorReading(float x, float y, float z)
 {
     dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_X, x, time(NULL));
     dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_Y, y, time(NULL));
     dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_Z, z, time(NULL));
 }
+*/
 
 static void publishAccelerometerSensorReading(float x, float y, float z)
 {
@@ -236,11 +242,13 @@ static void publishOrientationCalculation(int32_t orientation)
     checkOrientationAlarm(orientation);
 }
 
+/*
 static void publishBarometricPressureSensorReading(float temperature, float pressure)
 {
     dataRouter_WriteFloat(KEY_BAROMETR_TEMPERATURE, temperature, time(NULL));
     dataRouter_WriteFloat(KEY_BAROMETR_PRESSURE, pressure, time(NULL));
 }
+*/
 
 static void publishOpticalSensorReading(float luminosity)
 {
@@ -333,6 +341,7 @@ COMPONENT_INIT
     char          sensor[2048];
     char          json_result[2048];
     const char*   alarmFile = "./alarm.cmd";
+    unsigned int numReadings = 0;
 
     le_result_t macReadResult =
         le_cfg_QuickGetString("bleSensorInterface:/sensorMac", mac, sizeof(mac), "");
@@ -422,6 +431,8 @@ COMPONENT_INIT
     dataRouter_SessionStart("eu.airvantage.net", "SwiBridge", true, DATAROUTER_CACHE);
     while (1)
     {
+        const bool publish = (numReadings % 20) == 0;
+        numReadings++;
         snprintf(json_result, sizeof(json_result), "{");
         /* IR Temperature Sensor */
         snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x21", tool, mac);
@@ -462,7 +473,7 @@ COMPONENT_INIT
             value1,
             value2);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishIrTemperatureSensorReading(value1, value2);
+        //publishIrTemperatureSensorReading(value1, value2);
 
         /* Move Sensor */
         snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x39", tool, mac);
@@ -505,7 +516,7 @@ COMPONENT_INIT
             value2,
             value3);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishGyroSensorReading(value1, value2, value3);
+        //publishGyroSensorReading(value1, value2, value3);
 
         data1 = rawValue[12] | rawValue[13] << 8;
         data2 = rawValue[14] | rawValue[15] << 8;
@@ -528,7 +539,7 @@ COMPONENT_INIT
             value2,
             value3);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishMagnetometerSensorReading(value1, value2, value3);
+        //publishMagnetometerSensorReading(value1, value2, value3);
 
         /* MagnetoVector = (x,y,0)
          * Angle = (atan(y/x)/Pi) * 360;
@@ -543,7 +554,10 @@ COMPONENT_INIT
         snprintf(
             sensor, sizeof(sensor), "%s\"Compass\":{\"Angle\":%.2f},", json_result, compassAngle);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishCompassAngleCalculation(compassAngle);
+        if (publish)
+        {
+            publishCompassAngleCalculation(compassAngle);
+        }
 
         data1 = rawValue[6] | rawValue[7] << 8;
         data2 = rawValue[8] | rawValue[9] << 8;
@@ -566,7 +580,10 @@ COMPONENT_INIT
             value2,
             value3);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishAccelerometerSensorReading(value1, value2, value3);
+        if (publish)
+        {
+            publishAccelerometerSensorReading(value1, value2, value3);
+        }
 
         /* Shock:
          * Like to set an alarm if a shock or rapid acceleration has happened to our sensor
@@ -598,7 +615,10 @@ COMPONENT_INIT
             json_result,
             accDiff);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishShockCalculation(accDiff);
+        if (publish)
+        {
+            publishShockCalculation(accDiff);
+        }
 
         lastValue1 = value1;
         lastValue2 = value2;
@@ -649,7 +669,10 @@ COMPONENT_INIT
             i2,
             i3);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishOrientationCalculation(index);
+        if (publish)
+        {
+            publishOrientationCalculation(index);
+        }
 
         // snprintf(json_result, sizeof(json_result), "%s}\n", sensor);
         // printf("JSON:\n %s", json_result);
@@ -690,7 +713,7 @@ COMPONENT_INIT
             value1,
             value2);
         snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishBarometricPressureSensorReading(value1, value2);
+        //publishBarometricPressureSensorReading(value1, value2);
 
         /* Optical sensor: */
         snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x41", tool, mac);
@@ -724,7 +747,10 @@ COMPONENT_INIT
             json_result,
             value1);
         snprintf(json_result, sizeof(json_result), "%s\n", sensor);
-        publishOpticalSensorReading(value1);
+        if (publish)
+        {
+            publishOpticalSensorReading(value1);
+        }
 
         /* Humidity sensor: */
         snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x29", tool, mac);
@@ -761,7 +787,10 @@ COMPONENT_INIT
             value1,
             value2);
         snprintf(json_result, sizeof(json_result), "%s}\n", sensor);
-        publishHumiditySensorReading(value1, value2);
+        if (publish)
+        {
+            publishHumiditySensorReading(value1, value2);
+        }
 
         printf("%s", json_result);
         writeSensorDataToFile("sensorTag.json", json_result);
