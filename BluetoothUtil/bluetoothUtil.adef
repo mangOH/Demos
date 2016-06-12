@@ -13,11 +13,6 @@ bundles:
         [x] bin/gatttool      /bin/
         [x] script/bt-init.sh /bin/
     }
-
-    dir:
-    {
-        lib  /
-    }
 }
 
 

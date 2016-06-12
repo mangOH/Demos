@@ -18,7 +18,7 @@ sleep 1
 modprobe bnep.ko
 sleep 1
 
-mount -t aufs -o dirs=/legato/systems/current/apps/bluetoothUtil/read-only/lib=rw:/lib=ro aufs /lib
+mount -t aufs -o dirs=/mnt/flash/demo/lib=rw:/lib=ro aufs /lib
 sleep 1
 
 echo 13 > /sys/class/gpio/export
@@ -37,5 +37,5 @@ sleep 1
 
 hciconfig hci0 up
 
-#app start bleSensorInterface
+app start bleSensorInterface
 
