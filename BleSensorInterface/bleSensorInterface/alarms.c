@@ -8,8 +8,8 @@
 #define ALARM_TEMPERATURE_OFF_VAL (30.0)
 #define ALARM_HUMIDITY_ON_VAL     (45.0)
 #define ALARM_HUMIDITY_OFF_VAL    (40.0)
-#define ALARM_LUMINOSITY_ON_VAL   (3000.0)
-#define ALARM_LUMINOSITY_OFF_VAL  (1000.0)
+#define ALARM_LUMINOSITY_ON_VAL   (50.0)
+#define ALARM_LUMINOSITY_OFF_VAL  (40.0)
 
 // Data to monitor
 const char* shockKey            = "container.shock";
