@@ -108,28 +108,56 @@ void DemoStateMachine::updateState(void)
 void DemoStateMachine::controlRedLed(bool on)
 {
     const uint8_t bit = 1 << static_cast<int>(OutputPin::LED_RED);
-    this->_pendingOutput = (this->_pendingOutput & (~bit)) | (on ? bit : 0);
+    if (on)
+    {
+        this->_pendingOutput |= bit;
+    }
+    else
+    {
+        this->_pendingOutput &= ~bit;
+    }
     dataRouter_WriteBoolean(KEY_RED_LED, on, time(NULL));
 }
 
 void DemoStateMachine::controlGreenLed(bool on)
 {
     const uint8_t bit = 1 << static_cast<int>(OutputPin::LED_GREEN);
-    this->_pendingOutput = (this->_pendingOutput & (~bit)) | (on ? bit : 0);
+    if (on)
+    {
+        this->_pendingOutput |= bit;
+    }
+    else
+    {
+        this->_pendingOutput &= ~bit;
+    }
     dataRouter_WriteBoolean(KEY_GREEN_LED, on, time(NULL));
 }
 
 void DemoStateMachine::controlOverheatLed(bool on)
 {
     const uint8_t bit = 1 << static_cast<int>(OutputPin::LED_OVERHEAT);
-    this->_pendingOutput = (this->_pendingOutput & (~bit)) | (on ? bit : 0);
+    if (on)
+    {
+        this->_pendingOutput |= bit;
+    }
+    else
+    {
+        this->_pendingOutput &= ~bit;
+    }
     // no data router write for overheat LED
 }
 
 void DemoStateMachine::controlFan(bool on)
 {
     const uint8_t bit = 1 << static_cast<int>(OutputPin::FAN);
-    this->_pendingOutput = (this->_pendingOutput & (~bit)) | (on ? bit : 0);
+    if (on)
+    {
+        this->_pendingOutput |= bit;
+    }
+    else
+    {
+        this->_pendingOutput &= ~bit;
+    }
     dataRouter_WriteBoolean(KEY_FAN, on, time(NULL));
 }
 
