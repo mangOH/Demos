@@ -7,21 +7,20 @@ echo "PWD is: $PWD"
 #stty -F /dev/ttyHS0 crtscts
 #sleep 1
 
-modprobe hci_uart.ko
+modprobe hci_uart
 sleep 1
 modprobe bluetooth
 sleep 1
 modprobe rfcomm
 sleep 1
-modprobe hidp.ko
+modprobe hidp
 sleep 1
-modprobe bnep.ko
-sleep 1
-
-mount -t aufs -o dirs=/mnt/flash/demo/lib=rw:/lib=ro aufs /lib
+modprobe bnep
 sleep 1
 
-echo 13 > /sys/class/gpio/export
+if [ ! -d "/sys/class/gpio/gpio13" ]; then
+    echo 13 > /sys/class/gpio/export
+fi
 echo up > /sys/class/gpio/gpio13/pull
 sleep 1
 
@@ -36,6 +35,3 @@ hciconfig
 sleep 1
 
 hciconfig hci0 up
-
-app start bleSensorInterface
-
