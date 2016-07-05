@@ -1,0 +1,28 @@
+version: 1.0.0
+sandboxed: true
+//start: auto
+start: manual
+
+executables:
+{
+    sensorToAirVantage = ( sensorToAirVantage )
+}
+
+processes:
+{
+    run:
+    {
+        ( sensorToAirVantage )
+    }
+
+    faultAction: restart
+}
+
+
+bindings:
+{
+    sensorToAirVantage.sensorToAirVantage.dataRouter -> dataRouter.dataRouter
+    sensorToAirVantage.sensorToAirVantage.mqtt -> mqttClient.mqtt
+    sensorToAirVantage.sensorToAirVantage.le_info -> modemService.le_info
+}
+
