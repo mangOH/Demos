@@ -1,8 +1,7 @@
-Sierra Wireless Innovation Summit 2016 mangOH Demos
-===================================================
+mangOH Demos
+============
 
-This repository contains source code for the two mangOH demos shown at the
-Sierra Wireless Innovation Sumit 2016.
+This repository contains source code for mangOH demos.
 
 
 Container Tracking
@@ -13,8 +12,8 @@ number of sensors.  The demo supports alarm generation and pushing logged data
 to AirVantage web services.
 
 ### How To Run
-1. Build a bluetoothUtil and bleSensorInterface apps by running ```make``` in
-   the app directories.
+1. Build bluetoothUtil and bleSensorInterface apps by running ```make``` in the
+   app directories.
 1. Run ```instapp bleSensorInterface.wp85.update 192.168.2.2``` and ```instapp
    bluetoothUtil.wp85.update 192.168.2.2``` to install the two apps on the
    mangOH.
