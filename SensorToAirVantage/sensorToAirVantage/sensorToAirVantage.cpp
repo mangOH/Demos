@@ -4,25 +4,37 @@
 #include <string>
 #include <sstream>
 
-#define KEY_IR_TEMPERATURE_AMBIENT      "sensors.bluetooth.ir.ambientTemperature"
-#define KEY_IR_TEMPERATURE_IR           "sensors.bluetooth.ir.objectTemperature"
-#define KEY_MOVEMENT_GYRO_X             "sensors.bluetooth.motion.gyroscope.x"
-#define KEY_MOVEMENT_GYRO_Y             "sensors.bluetooth.motion.gyroscope.y"
-#define KEY_MOVEMENT_GYRO_Z             "sensors.bluetooth.motion.gyroscope.z"
-#define KEY_MOVEMENT_MAGNETOMETER_X     "sensors.bluetooth.motion.magnetometer.x"
-#define KEY_MOVEMENT_MAGNETOMETER_Y     "sensors.bluetooth.motion.magnetometer.y"
-#define KEY_MOVEMENT_MAGNETOMETER_Z     "sensors.bluetooth.motion.magnetometer.z"
-#define KEY_MOVEMENT_ACCELEROMETER_X    "sensors.bluetooth.motion.accelerometer.x"
-#define KEY_MOVEMENT_ACCELEROMETER_Y    "sensors.bluetooth.motion.accelerometer.y"
-#define KEY_MOVEMENT_ACCELEROMETER_Z    "sensors.bluetooth.motion.accelerometer.z"
-#define KEY_BAROMETR_TEMPERATURE        "sensors.bluetooth.barometer.temperature"
-#define KEY_BAROMETR_PRESSURE           "sensors.bluetooth.barometer.pressure"
-#define KEY_OPTICAL_LUMINOSITY          "sensors.bluetooth.luminosity"
-#define KEY_HUMIDITY_SENSOR_TEMPERATURE "sensors.bluetooth.humidity.temperature"
-#define KEY_HUMIDITY_SENSOR_HUMIDITY    "sensors.bluetooth.humidity.humidity"
-#define KEY_SHOCK                       "sensors.bluetooth.shock"
-#define KEY_ORIENTATION                 "sensors.bluetooth.orientation"
-#define KEY_COMPASS                     "sensors.bluetooth.compass"
+#define KEY_BT_IR_TEMPERATURE_AMBIENT      "sensors.bluetooth.ir.ambientTemperature"
+#define KEY_BT_IR_TEMPERATURE_IR           "sensors.bluetooth.ir.objectTemperature"
+#define KEY_BT_MOVEMENT_GYRO_X             "sensors.bluetooth.motion.gyroscope.x"
+#define KEY_BT_MOVEMENT_GYRO_Y             "sensors.bluetooth.motion.gyroscope.y"
+#define KEY_BT_MOVEMENT_GYRO_Z             "sensors.bluetooth.motion.gyroscope.z"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_X     "sensors.bluetooth.motion.magnetometer.x"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_Y     "sensors.bluetooth.motion.magnetometer.y"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_Z     "sensors.bluetooth.motion.magnetometer.z"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_X    "sensors.bluetooth.motion.accelerometer.x"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_Y    "sensors.bluetooth.motion.accelerometer.y"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_Z    "sensors.bluetooth.motion.accelerometer.z"
+#define KEY_BT_BAROMETR_TEMPERATURE        "sensors.bluetooth.barometer.temperature"
+#define KEY_BT_BAROMETR_PRESSURE           "sensors.bluetooth.barometer.pressure"
+#define KEY_BT_OPTICAL_LUMINOSITY          "sensors.bluetooth.luminosity"
+#define KEY_BT_HUMIDITY_SENSOR_TEMPERATURE "sensors.bluetooth.humidity.temperature"
+#define KEY_BT_HUMIDITY_SENSOR_HUMIDITY    "sensors.bluetooth.humidity.humidity"
+#define KEY_BT_SHOCK                       "sensors.bluetooth.shock"
+#define KEY_BT_ORIENTATION                 "sensors.bluetooth.orientation"
+#define KEY_BT_COMPASS                     "sensors.bluetooth.compass"
+
+#define KEY_ARDUINO_TEMPERATURE            "sensors.arduino.temperature"
+#define KEY_ARDUINO_HUMIDITY               "sensors.arduino.humidity"
+#define KEY_ARDUINO_LUMINOSITY             "sensors.arduino.luminosity"
+#define KEY_ARDUINO_NOISE                  "sensors.arduino.noise"
+#define KEY_ARDUINO_WATER                  "sensors.arduino.water"
+#define KEY_ARDUINO_DUST                   "sensors.arduino.dust"
+#define KEY_ARDUINO_OXYGEN                 "sensors.arduino.oxygen"
+
+#define KEY_GPS_LATITUDE                   "sensors.mangoh.gps.latitude"
+#define KEY_GPS_LONGITUDE                  "sensors.mangoh.gps.longitude"
+
 
 #define CFG_KEY_MQTT_HOST     "mqttBrokerHost"
 #define CFG_KEY_MQTT_PORT     "mqttBrokerPort"
@@ -59,25 +71,34 @@ private:
 };
 
 static const char* pushKeys[] = {
-    KEY_IR_TEMPERATURE_AMBIENT,
-    KEY_IR_TEMPERATURE_IR,
-    KEY_MOVEMENT_GYRO_X,
-    KEY_MOVEMENT_GYRO_Y,
-    KEY_MOVEMENT_GYRO_Z,
-    KEY_MOVEMENT_MAGNETOMETER_X,
-    KEY_MOVEMENT_MAGNETOMETER_Y,
-    KEY_MOVEMENT_MAGNETOMETER_Z,
-    KEY_MOVEMENT_ACCELEROMETER_X,
-    KEY_MOVEMENT_ACCELEROMETER_Y,
-    KEY_MOVEMENT_ACCELEROMETER_Z,
-    KEY_BAROMETR_TEMPERATURE,
-    KEY_BAROMETR_PRESSURE,
-    KEY_OPTICAL_LUMINOSITY,
-    KEY_HUMIDITY_SENSOR_TEMPERATURE,
-    KEY_HUMIDITY_SENSOR_HUMIDITY,
-    KEY_SHOCK,
-    KEY_ORIENTATION,
-    KEY_COMPASS,
+    KEY_BT_IR_TEMPERATURE_AMBIENT,
+    KEY_BT_IR_TEMPERATURE_IR,
+    KEY_BT_MOVEMENT_GYRO_X,
+    KEY_BT_MOVEMENT_GYRO_Y,
+    KEY_BT_MOVEMENT_GYRO_Z,
+    KEY_BT_MOVEMENT_MAGNETOMETER_X,
+    KEY_BT_MOVEMENT_MAGNETOMETER_Y,
+    KEY_BT_MOVEMENT_MAGNETOMETER_Z,
+    KEY_BT_MOVEMENT_ACCELEROMETER_X,
+    KEY_BT_MOVEMENT_ACCELEROMETER_Y,
+    KEY_BT_MOVEMENT_ACCELEROMETER_Z,
+    KEY_BT_BAROMETR_TEMPERATURE,
+    KEY_BT_BAROMETR_PRESSURE,
+    KEY_BT_OPTICAL_LUMINOSITY,
+    KEY_BT_HUMIDITY_SENSOR_TEMPERATURE,
+    KEY_BT_HUMIDITY_SENSOR_HUMIDITY,
+    KEY_BT_SHOCK,
+    KEY_BT_ORIENTATION,
+    KEY_BT_COMPASS,
+    KEY_ARDUINO_TEMPERATURE,
+    KEY_ARDUINO_HUMIDITY,
+    KEY_ARDUINO_LUMINOSITY,
+    KEY_ARDUINO_NOISE,
+    KEY_ARDUINO_WATER,
+    KEY_ARDUINO_DUST,
+    KEY_ARDUINO_OXYGEN,
+    KEY_GPS_LATITUDE,
+    KEY_GPS_LONGITUDE,
 };
 
 static struct
