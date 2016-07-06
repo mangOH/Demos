@@ -10,5 +10,5 @@ requires:
 
 sources:
 {
-   gpsdemo.c
+   gpsPublish.c
 }
