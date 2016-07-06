@@ -1,11 +1,10 @@
-sandboxed: false
-
+sandboxed: true
 version: 1.0.0
 maxFileSystemBytes: 512K
 
 executables:
 {
-        gpsdemo = ( gpsdemoComponent )
+    gpsdemo = ( gpsdemoComponent )
 }
 
 processes:
@@ -18,7 +17,7 @@ processes:
     {
         ( gpsdemo )
     }
-    faultAction: stopApp
+    faultAction: restart
 }
 
 bindings:

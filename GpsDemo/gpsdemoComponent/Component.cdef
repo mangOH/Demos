@@ -2,7 +2,7 @@ requires:
 {
     api:
     {
-	positioning/le_posCtrl.api
+        positioning/le_posCtrl.api
         positioning/le_pos.api
         ${MANGOH_ROOT}/apps/DataRouter/dataRouter.api
     }
