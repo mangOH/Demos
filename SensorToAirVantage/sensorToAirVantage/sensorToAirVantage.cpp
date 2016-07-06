@@ -24,6 +24,10 @@
 #define KEY_ORIENTATION                 "sensors.bluetooth.orientation"
 #define KEY_COMPASS                     "sensors.bluetooth.compass"
 
+#define CFG_KEY_MQTT_HOST     "mqttBrokerHost"
+#define CFG_KEY_MQTT_PORT     "mqttBrokerPort"
+#define CFG_KEY_MQTT_PASSWORD "mqttBrokerPassword"
+
 
 class DataValue
 {
@@ -304,42 +308,46 @@ COMPONENT_INIT
         globals.publishTopic = imei + "/messages/json";
     }
 
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("");
     char mqttBrokerHost[128];
-    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("sensorToAirVantage:/mqttBrokerHost");
     LE_FATAL_IF(
-        le_cfg_GetNodeType(cfgIter, ".") != LE_CFG_TYPE_STRING,
+        le_cfg_GetNodeType(cfgIter, CFG_KEY_MQTT_HOST) != LE_CFG_TYPE_STRING,
         "configTree setting sensorToAirVantage:/mqttBrokerHost either does not exist or is not a "
         "string");
     LE_FATAL_IF(
         le_cfg_GetString(
-            cfgIter, ".", mqttBrokerHost, NUM_ARRAY_MEMBERS(mqttBrokerHost), "") != LE_OK,
-        "configTree value sensorToAirVantage:/mqttBrokerHost is too large to fit in the read "
+            cfgIter,
+            CFG_KEY_MQTT_HOST,
+            mqttBrokerHost,
+            NUM_ARRAY_MEMBERS(mqttBrokerHost),
+            "") != LE_OK,
+        "configTree value sensorToAirVantage:/" CFG_KEY_MQTT_HOST " is too large to fit in the read "
         "buffer");
-    le_cfg_CancelTxn(cfgIter);
 
-    cfgIter = le_cfg_CreateReadTxn("sensorToAirVantage:/mqttBrokerPort");
     LE_FATAL_IF(
-        le_cfg_GetNodeType(cfgIter, ".") != LE_CFG_TYPE_INT,
-        "configTree setting sensorToAirVantage:/mqttBrokerPort either does not exist or is not an "
-        "integer");
-    const int32_t port = le_cfg_GetInt(cfgIter, ".", 0);
+        le_cfg_GetNodeType(cfgIter, CFG_KEY_MQTT_PORT) != LE_CFG_TYPE_INT,
+        "configTree setting sensorToAirVantage:/" CFG_KEY_MQTT_PORT " either does not exist or is "
+        "not an integer");
+    const int32_t port = le_cfg_GetInt(cfgIter, CFG_KEY_MQTT_PORT, 0);
     LE_FATAL_IF(
         port <= 0 || port > UINT16_MAX,
-        "configTree value sensorToAirVantage:/mqttBrokerPort contains an invalid value (%d)",
+        "configTree value sensorToAirVantage:/" CFG_KEY_MQTT_PORT " contains an invalid value (%d)",
         port);
-    le_cfg_CancelTxn(cfgIter);
 
     char mqttBrokerPassword[128];
-    cfgIter = le_cfg_CreateReadTxn("sensorToAirVantage:/mqttBrokerPassword");
     LE_FATAL_IF(
-        le_cfg_GetNodeType(cfgIter, ".") != LE_CFG_TYPE_STRING,
-        "configTree setting sensorToAirVantage:/mqttBrokerPassword either does not exist or is "
-        "not a string");
+        le_cfg_GetNodeType(cfgIter, CFG_KEY_MQTT_PASSWORD) != LE_CFG_TYPE_STRING,
+        "configTree setting sensorToAirVantage:/" CFG_KEY_MQTT_PASSWORD " either does not exist "
+        "or is not a string");
     LE_FATAL_IF(
         le_cfg_GetString(
-            cfgIter, ".", mqttBrokerPassword, NUM_ARRAY_MEMBERS(mqttBrokerPassword), "") != LE_OK,
-        "configTree value sensorToAirVantage:/mqttBrokerPassword is too large to fit in the read "
-        "buffer");
+            cfgIter,
+            CFG_KEY_MQTT_PASSWORD,
+            mqttBrokerPassword,
+            NUM_ARRAY_MEMBERS(mqttBrokerPassword),
+            "") != LE_OK,
+        "configTree value sensorToAirVantage:/" CFG_KEY_MQTT_PASSWORD " is too large to fit in "
+        "the read buffer");
     le_cfg_CancelTxn(cfgIter);
     globals.mqttBrokerPassword = mqttBrokerPassword;
 
