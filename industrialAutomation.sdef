@@ -1,0 +1,73 @@
+//--------------------------------------------------------------------------------------------------
+// Industrial automation demo sdef.  This sdef is based on the mangOH sdef, so there are likely to
+// be many apps which aren't strictly required for the demo.
+//
+// Copyright (C) Sierra Wireless Inc.  Use of this work is subject to license.
+//--------------------------------------------------------------------------------------------------
+
+apps:
+{
+    // Platform services.
+    $LEGATO_ROOT/apps/platformServices/airVantage/avcService
+    $LEGATO_ROOT/apps/platformServices/audioService
+    $LEGATO_ROOT/apps/platformServices/cellNetService
+    $LEGATO_ROOT/apps/platformServices/dataConnectionService
+    $LEGATO_ROOT/apps/platformServices/fwupdateService
+    $LEGATO_ROOT/apps/platformServices/modemService
+    $LEGATO_ROOT/apps/platformServices/positioningService
+    $LEGATO_ROOT/apps/platformServices/powerMgr
+    $LEGATO_ROOT/apps/platformServices/secStore
+    $LEGATO_ROOT/apps/platformServices/smsInboxService
+    $LEGATO_ROOT/apps/platformServices/voiceCallService
+    $LEGATO_ROOT/apps/platformServices/gpioService
+
+    $LEGATO_WIFI_ROOT/service/wifiService.adef
+    $LEGATO_WIFI_ROOT/apps/sample/wifiClientTest/wifiClientTest.adef
+    $LEGATO_WIFI_ROOT/apps/sample/wifiApTest/wifiApTest.adef
+    $LEGATO_WIFI_ROOT/apps/sample/wifiWebAp/wifiWebAp.adef
+    $LEGATO_WIFI_ROOT/apps/tools/wifi/wifi.adef
+
+    $MANGOH_ROOT/apps/GpioExpander/gpioExpanderService/gpioExpanderService.adef
+    $MANGOH_ROOT/apps/GpioExpander/gpioExpanderDemo/gpioExpanderDemo.adef
+
+    $MANGOH_ROOT/apps/MuxControl/muxCtrlService/muxCtrlService.adef
+    $MANGOH_ROOT/apps/MuxControl/tools/muxCtrlTools.adef
+
+    $MANGOH_ROOT/apps/MqttClient/mqttClient.adef
+    $MANGOH_ROOT/apps/DataRouter/dataRouter.adef
+    $MANGOH_ROOT/apps/DataRouter/drTool/drTool.adef
+    $MANGOH_ROOT/apps/ArduinoBridge/arduinoBridge.adef
+    $MANGOH_ROOT/apps/SocialService/socialService.adef
+
+    // Command-line tools.
+    $LEGATO_ROOT/apps/tools/tools
+
+    $MANGOH_ROOT/samples/Demos/KillSwitch/killSwitch.adef
+}
+
+commands:
+{
+    cm = tools:/bin/cm
+    fwupdate = tools:/bin/fwupdate
+    secstore = tools:/bin/secstore
+    pmtool = tools:/bin/pmtool
+
+    wifi = wifi:/bin/wifi
+
+    mux = muxCtrlTools:/bin/mux
+
+    dr = drTool:/bin/dr
+
+    twitter = socialService:/bin/twitter
+}
+
+bindings:
+{
+    <root>.le_fwupdate -> fwupdateService.le_fwupdate
+}
+
+interfaceSearch:
+{
+    interfaces/modemServices
+    interfaces/positioning
+}
