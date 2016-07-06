@@ -13,7 +13,7 @@ requires:
     api:
     {
         ${MANGOH_ROOT}/apps/DataRouter/dataRouter.api
-        ${MANGOH_ROOT}/samples/InnovationSummitDemo/KillSwitch/mangoh_canOpenIox1.api
+        ${MANGOH_ROOT}/samples/Demos/KillSwitch/mangoh_canOpenIox1.api
     }
 }
 
