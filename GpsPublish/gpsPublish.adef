@@ -1,0 +1,28 @@
+sandboxed: true
+version: 1.0.0
+maxFileSystemBytes: 512K
+
+executables:
+{
+    gpsPublish = ( gpsPublishComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+    run:
+    {
+        ( gpsPublish )
+    }
+    faultAction: restart
+}
+
+bindings:
+{
+    gpsPublish.gpsPublishComponent.le_posCtrl -> positioningService.le_posCtrl
+    gpsPublish.gpsPublishComponent.le_pos -> positioningService.le_pos
+    gpsPublish.gpsPublishComponent.dataRouter -> dataRouter.dataRouter
+}
