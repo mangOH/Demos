@@ -1,7 +1,6 @@
 version: 1.0.0
 sandboxed: true
-//start: auto
-start: manual
+start: auto
 
 executables:
 {
@@ -14,10 +13,8 @@ processes:
     {
         ( sensorToAirVantage )
     }
-
     faultAction: restart
 }
-
 
 bindings:
 {

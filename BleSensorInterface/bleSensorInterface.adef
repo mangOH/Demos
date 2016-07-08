@@ -1,5 +1,5 @@
 sandboxed: false
-start: manual
+start: auto
 
 executables:
 {
