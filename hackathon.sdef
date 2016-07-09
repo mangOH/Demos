@@ -37,7 +37,7 @@ apps:
     $MANGOH_ROOT/apps/DataRouter/dataRouter.adef
     $MANGOH_ROOT/apps/DataRouter/drTool/drTool.adef
     $MANGOH_ROOT/apps/ArduinoBridge/arduinoBridge.adef
-    $MANGOH_ROOT/apps/SocialService/socialService.adef
+    //$MANGOH_ROOT/apps/SocialService/socialService.adef
 
     // Command-line tools.
     $LEGATO_ROOT/apps/tools/tools
@@ -61,7 +61,7 @@ commands:
 
     dr = drTool:/bin/dr
 
-    twitter = socialService:/bin/twitter
+    //twitter = socialService:/bin/twitter
 
     hciattach = bluetoothUtil:/bin/hciattach
     hciconfig = bluetoothUtil:/bin/hciconfig

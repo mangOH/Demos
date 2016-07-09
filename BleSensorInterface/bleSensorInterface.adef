@@ -4,7 +4,7 @@ start: auto
 executables:
 {
     bleSensorInterface = ( bleSensorInterface )
-    twitterUpdate = ( twitterUpdate )
+    //twitterUpdate = ( twitterUpdate )
 }
 
 processes:
@@ -12,7 +12,7 @@ processes:
     run:
     {
         ( bleSensorInterface )
-        ( twitterUpdate )
+        //( twitterUpdate )
     }
 
     faultAction: stopApp
@@ -21,7 +21,7 @@ processes:
 bindings:
 {
     bleSensorInterface.bleSensorInterface.dataRouter -> dataRouter.dataRouter
-    twitterUpdate.twitterUpdate.dataRouter -> dataRouter.dataRouter
-    twitterUpdate.twitterUpdate.twitter -> socialService.twitter
+    //twitterUpdate.twitterUpdate.dataRouter -> dataRouter.dataRouter
+    //twitterUpdate.twitterUpdate.twitter -> socialService.twitter
 }
 
