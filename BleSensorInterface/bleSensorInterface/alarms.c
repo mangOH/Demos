@@ -11,19 +11,13 @@
 #define ALARM_LUMINOSITY_ON_VAL   (50.0)
 #define ALARM_LUMINOSITY_OFF_VAL  (40.0)
 
-// Data to monitor
-const char* shockKey            = "container.shock";
-const char* temperatureKey      = "container.temperature";
-const char* humidityKey         = "container.humidity";
-const char* luminosityKey       = "container.luminosity";
-const char* orientationKey      = "container.orientation";
 
 // Data to publish
-const char* alarmShockKey       = "container.alarmShock";
-const char* alarmTemperatureKey = "container.alarmTemperature";
-const char* alarmHumidityKey    = "container.alarmHumidity";
-const char* alarmLuminosityKey  = "container.alarmLuminosity";
-const char* alarmOrientationKey = "container.alarmOrientation";
+const char* alarmShockKey       = "container.alarms.shock";
+const char* alarmTemperatureKey = "container.alarms.temperature";
+const char* alarmHumidityKey    = "container.alarms.humidity";
+const char* alarmLuminosityKey  = "container.alarms.luminosity";
+const char* alarmOrientationKey = "container.alarms.orientation";
 
 void checkShockAlarm(double shockValue)
 {

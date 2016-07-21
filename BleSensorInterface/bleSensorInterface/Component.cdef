@@ -2,6 +2,12 @@ sources:
 {
     gatt-sensorTag.c
     alarms.c
+    sensorConversions.c
+}
+
+cflags:
+{
+    -std=c99
 }
 
 requires:

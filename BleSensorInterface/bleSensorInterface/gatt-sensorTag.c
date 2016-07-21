@@ -1,12 +1,4 @@
-/*
- *
- *  Tool: gatt-sensorTag
- *
- *  BlueZ - Bluetooth protocol stack for Linux
- *
- *  TI sensorTag sensor data output on top of gatttool
- */
-
+// --------------------------------- INCLUDES
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -29,784 +21,1342 @@
 #include <readline/history.h>
 
 #include "alarms.h"
+#include "sensorConversions.h"
 
+// --------------------------------- DEFINES
 
 // DataRouter/AirVantage keys
-#define KEY_IR_TEMPERATURE_AMBIENT      "sensors.bluetooth.ir.ambientTemperature"
-#define KEY_IR_TEMPERATURE_IR           "sensors.bluetooth.ir.objectTemperature"
-#define KEY_MOVEMENT_GYRO_X             "sensors.bluetooth.motion.gyroscope.x"
-#define KEY_MOVEMENT_GYRO_Y             "sensors.bluetooth.motion.gyroscope.y"
-#define KEY_MOVEMENT_GYRO_Z             "sensors.bluetooth.motion.gyroscope.z"
-#define KEY_MOVEMENT_MAGNETOMETER_X     "sensors.bluetooth.motion.magnetometer.x"
-#define KEY_MOVEMENT_MAGNETOMETER_Y     "sensors.bluetooth.motion.magnetometer.y"
-#define KEY_MOVEMENT_MAGNETOMETER_Z     "sensors.bluetooth.motion.magnetometer.z"
-#define KEY_MOVEMENT_ACCELEROMETER_X    "sensors.bluetooth.motion.accelerometer.x"
-#define KEY_MOVEMENT_ACCELEROMETER_Y    "sensors.bluetooth.motion.accelerometer.y"
-#define KEY_MOVEMENT_ACCELEROMETER_Z    "sensors.bluetooth.motion.accelerometer.z"
-#define KEY_BAROMETR_TEMPERATURE        "sensors.bluetooth.barometer.temperature"
-#define KEY_BAROMETR_PRESSURE           "sensors.bluetooth.barometer.pressure"
-#define KEY_OPTICAL_LUMINOSITY          "sensors.bluetooth.luminosity"
-#define KEY_HUMIDITY_SENSOR_TEMPERATURE "sensors.bluetooth.humidity.temperature"
-#define KEY_HUMIDITY_SENSOR_HUMIDITY    "sensors.bluetooth.humidity.humidity"
-#define KEY_SHOCK                       "sensors.bluetooth.shock"
-#define KEY_ORIENTATION                 "sensors.bluetooth.orientation"
-#define KEY_COMPASS                     "sensors.bluetooth.compass"
-// TODO: check if these keys are correct for "commands" in the app model
-#define KEY_RED_LED                     "sensors.redLed"
-#define KEY_GREEN_LED                   "sensors.greenLed"
-#define KEY_BUZZER                      "sensors.buzzer"
+#define KEY_IR_OBJECT_TEMPERATURE       "container.sensors.ir.objectTemperature"
+#define KEY_IR_AMBIENT_TEMPERATURE      "container.sensors.ir.ambientTemperature"
+#define KEY_HUMIDITY_TEMPERATURE        "container.sensors.humidity.temperature"
+#define KEY_HUMIDITY_HUMIDITY           "container.sensors.humidity.humidity"
+#define KEY_BAROMETER_TEMPERATURE       "container.sensors.barometer.temperature"
+#define KEY_BAROMETER_PRESSURE          "container.sensors.barometer.pressure"
+#define KEY_OPTICAL_LUMINOSITY          "container.sensors.luminosity"
+#define KEY_MOVEMENT_GYROSCOPE_X        "container.sensors.movement.gyroscope.x"
+#define KEY_MOVEMENT_GYROSCOPE_Y        "container.sensors.movement.gyroscope.y"
+#define KEY_MOVEMENT_GYROSCOPE_Z        "container.sensors.movement.gyroscope.z"
+#define KEY_MOVEMENT_ACCELEROMETER_X    "container.sensors.movement.accelerometer.x"
+#define KEY_MOVEMENT_ACCELEROMETER_Y    "container.sensors.movement.accelerometer.y"
+#define KEY_MOVEMENT_ACCELEROMETER_Z    "container.sensors.movement.accelerometer.z"
+#define KEY_MOVEMENT_MAGNETOMETER_X     "container.sensors.movement.magnetometer.x"
+#define KEY_MOVEMENT_MAGNETOMETER_Y     "container.sensors.movement.magnetometer.y"
+#define KEY_MOVEMENT_MAGNETOMETER_Z     "container.sensors.movement.magnetometer.z"
+#define KEY_SHOCK                       "container.calculations.shock"
+#define KEY_ORIENTATION                 "container.calculations.orientation"
+#define KEY_COMPASS                     "container.calculations.compass"
+#define KEY_BUZZER                      "buzzer.enable"
+#define KEY_RED_LED                     "redLED.enable"
+#define KEY_GREEN_LED                   "greenLED.enable"
+
+#define PUBLISH_PERIOD_IN_MS 30000
+
+#define PIPE_READ_END_INDEX 0
+#define PIPE_WRITE_END_INDEX 1
+
+// Movement sensor notification is 18 bytes.  All others are smaller.
+#define MAX_NOTIFICATION_SIZE 18
 
 
-#define DEBUG_OUTPUT
-#ifdef DEBUG_OUTPUT
-#define PRINT_DEBUG(_fmt_, ...) LE_DEBUG(_fmt_, __VA_ARGS__)
-#else
-#define PRINT_DEBUG(_fmt_, ...)
-#endif
+// Convenience macros for initializing struct HandleLookup values.
+// NOTE: We don't need to permanently store the handle of a primary service, so set handleStorage
+// to NULL.
+#define LOOKUP_PRIMARY_SERVICE(_uuid_) { .isPrimaryService=true, .uuid=_uuid_, .handleStorage=NULL }
+#define LOOKUP_CHARACTERISTIC(_uuid_, _storagePtr_) { .isPrimaryService=false, .uuid=_uuid_, .handleStorage=_storagePtr_ }
 
-/* supposed the Move sensor raw data has the maximum value array */
-#define MAX_SENSOR_RAW 20
 
-/* Vincent added for TI SensorTag data calculation and AirVantage on mangOH board */
+// --------------------------------- DATA TYPES
 
-static int writeSensorDataToFile(const char* fileName, char* data)
+// A type representing a handle to lookup
+struct HandleLookup
 {
-    FILE* fp;
-    char  path[64];
+    bool isPrimaryService;
+    const char* uuid;
+    uint16_t* handleStorage;
+};
 
-    if (!data)
-        exit(1);
-
-    sprintf(path, "%s", fileName);
-    // printf("writeSensorDataToFile: %s\n", path);
-    fp = fopen(fileName, "w");
-    if (fp == NULL)
+typedef struct
+{
+    struct
     {
-        printf("Error!");
-        exit(1);
-    }
-    // printf("\tWriting data: %s\n", data);
-    fprintf(fp, "%s", data);
-
-    fclose(fp);
-    return 0;
-}
-
-static float sensorMpu9250GyroConvert(int16_t data)
-{
-    //-- calculate rotation, unit deg/s, range -250, +250
-    return (data * 1.0) / (65536 / 500);
-}
-
-static float sensorMpu9250MagConvert(int16_t data)
-{
-    //-- calculate magnetism, unit uT, range +-4900
-    return 1.0 * data;
-}
-
-// Accelerometer ranges
-#define ACC_RANGE_2G 0
-#define ACC_RANGE_4G 1
-#define ACC_RANGE_8G 2
-#define ACC_RANGE_16G 3
-
-static int accRange = ACC_RANGE_16G;
-
-/* Move sensor Accelerometer convert */
-static float sensorMpu9250AccConvert(int16_t rawData)
-{
-    float v;
-
-    switch (accRange)
+        double ambientTemperatureInCelcius;
+        double objectTemperatureInCelcius;
+    } irTemperature;
+    struct
     {
-        case ACC_RANGE_2G:
-            //-- calculate acceleration, unit G, range -2, +2
-            v = (rawData * 1.0) / (32768 / 2);
-            break;
-
-        case ACC_RANGE_4G:
-            //-- calculate acceleration, unit G, range -4, +4
-            v = (rawData * 1.0) / (32768 / 4);
-            break;
-
-        case ACC_RANGE_8G:
-            //-- calculate acceleration, unit G, range -8, +8
-            v = (rawData * 1.0) / (32768 / 8);
-            break;
-
-        case ACC_RANGE_16G:
-            //-- calculate acceleration, unit G, range -16, +16
-            v = (rawData * 1.0) / (32768 / 16);
-            break;
-    }
-
-    return v;
-}
-
-/* Humidity Sensor */
-static void sensorHdc1000Convert(uint16_t rawTemp, uint16_t rawHum, float* temp, float* hum)
-{
-    //-- calculate temperature [°C]
-    *temp = ((double)(int16_t)rawTemp / 65536) * 165 - 40;
-
-    //-- calculate relative humidity [%RH]
-    *hum = ((double)rawHum / 65536) * 100;
-}
-
-/* Barometic Pressure Sensor */
-static float calcBmp280(unsigned int rawValue)
-{
-    return rawValue / 100.0f;
-}
-
-/* IR Temperature convert */
-static void sensorTmp007Convert(int16_t rawAmbTemp, int16_t rawObjTemp, float* tAmb, float* tObj)
-{
-    const float SCALE_LSB = 0.03125;
-    float       t;
-    int         it;
-
-    it    = (int)((rawObjTemp) >> 2);
-    t     = ((float)(it)) * SCALE_LSB;
-    *tObj = t;
-
-    it    = (int)((rawAmbTemp) >> 2);
-    t     = (float)it;
-    *tAmb = t * SCALE_LSB;
-}
-
-float sensorOpt3001Convert(int16_t rawData)
-{
-    int16_t e, m;
-
-    m = rawData & 0x0FFF;
-    e = (rawData & 0xF000) >> 12;
-
-    // printf("m = %d, e = %d\n", m, e);
-    if (e == 0)
-        return m * (0.01 * 1);
-    else if (e == 1)
-        return m * (0.01 * 2.0 * 1);
-    else if (e == 2)
-        return m * (0.01 * 2.0 * 2);
-    else
-        return m * (0.01 * 2.0 * 3);
-    // return m * (0.01 * pow(2.0,e));
-}
-
-static void publishIrTemperatureSensorReading(float ambientTemperature, float irTemperature)
-{
-    dataRouter_WriteFloat(KEY_IR_TEMPERATURE_AMBIENT, ambientTemperature, time(NULL));
-    dataRouter_WriteFloat(KEY_IR_TEMPERATURE_IR, ambientTemperature, time(NULL));
-}
-
-static void publishGyroSensorReading(float x, float y, float z)
-{
-    dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_X, x, time(NULL));
-    dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_Y, y, time(NULL));
-    dataRouter_WriteFloat(KEY_MOVEMENT_GYRO_Z, z, time(NULL));
-}
-
-static void publishMagnetometerSensorReading(float x, float y, float z)
-{
-    dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_X, x, time(NULL));
-    dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_Y, y, time(NULL));
-    dataRouter_WriteFloat(KEY_MOVEMENT_MAGNETOMETER_Z, z, time(NULL));
-}
-
-static void publishAccelerometerSensorReading(float x, float y, float z)
-{
-    dataRouter_WriteFloat(KEY_MOVEMENT_ACCELEROMETER_X, x, time(NULL));
-    dataRouter_WriteFloat(KEY_MOVEMENT_ACCELEROMETER_Y, y, time(NULL));
-    dataRouter_WriteFloat(KEY_MOVEMENT_ACCELEROMETER_Z, z, time(NULL));
-}
-
-static void publishShockCalculation(float shock)
-{
-    dataRouter_WriteFloat(KEY_SHOCK, shock, time(NULL));
-    checkShockAlarm(shock);
-}
-
-static void publishOrientationCalculation(int32_t orientation)
-{
-    dataRouter_WriteInteger(KEY_ORIENTATION, orientation, time(NULL));
-    checkOrientationAlarm(orientation);
-}
-
-static void publishBarometricPressureSensorReading(float temperature, float pressure)
-{
-    dataRouter_WriteFloat(KEY_BAROMETR_TEMPERATURE, temperature, time(NULL));
-    dataRouter_WriteFloat(KEY_BAROMETR_PRESSURE, pressure, time(NULL));
-}
-
-static void publishOpticalSensorReading(float luminosity)
-{
-    dataRouter_WriteFloat(KEY_OPTICAL_LUMINOSITY, luminosity, time(NULL));
-    checkLuminosityAlarm(luminosity);
-}
-
-static void publishHumiditySensorReading(float temperature, float humidity)
-{
-    dataRouter_WriteFloat(KEY_HUMIDITY_SENSOR_TEMPERATURE, temperature, time(NULL));
-    dataRouter_WriteFloat(KEY_HUMIDITY_SENSOR_HUMIDITY, humidity, time(NULL));
-    checkTemperatureAlarm(temperature);
-    checkHumidityAlarm(humidity);
-}
-
-static void publishCompassAngleCalculation(float angle)
-{
-    dataRouter_WriteFloat(KEY_COMPASS, angle, time(NULL));
-}
-
-static int rawSensorDataStr2Value(char* line, int* len, int** value)
-{
-    char *token, *newtoken;
-    char* search = ":";
-    int   index = 0;
-    int new;
-
-    PRINT_DEBUG("Parsing: %s", line);
-
-    // Token will point to "Characteristic value/descriptor".
-    token = strtok(line, search);
-    // printf("token: %s\n", token);
-
-    // Token will point to "2d ff .....".
-    token = strtok(NULL, search);
-    // printf("token: %s\n", token);
-
-    search   = " ";
-    newtoken = strtok(token, search);
-    // printf("new token: %s\n", newtoken);
-    sscanf(newtoken, "%x", &new);
-    *(*value + index) = new;
-    index++;
-
-    while (newtoken)
+        double temperatureInCelcius;
+        double humidityInRelativePercent;
+    } humidity;
+    struct
     {
-        newtoken = strtok(NULL, search);
-        if (newtoken == NULL)
+        double temperatureInCelcius;
+        double pressureInHectoPascal;
+    } barometricPressure;
+    struct
+    {
+        double luminosityInLux;
+    } optical;
+    struct
+    {
+        struct
         {
-            // printf("empty reached!!!\n");
+            double x;
+            double y;
+            double z;
+        } gyroInDegreesPerSecond;
+        struct
+        {
+            double x;
+            double y;
+            double z;
+        } accelerometerInG;
+        struct
+        {
+            double x;
+            double y;
+            double z;
+        } magnetometerInMicroTesla;
+    } movement;
+} SensorReadings;
+
+typedef struct
+{
+    double compassAngle;
+    double shock;
+    uint8_t orientation;
+} SensorCalculation;
+
+
+enum ProgramState
+{
+    STATE_BEGIN,
+    STATE_WAIT_FOR_ATTEMPTING,
+    STATE_WAIT_FOR_CONNECT_SUCCESS,
+    STATE_HANDLE_LOOKUP_BEGIN,
+    STATE_HANDLE_LOOKUP_WAIT_FOR_RANGE,
+    STATE_HANDLE_LOOKUP_WAIT_FOR_HANDLES,
+    STATE_WAIT_FOR_NOTIFICATIONS
+};
+
+
+// --------------------------------- STATIC FUNCTION DECLARATIONS
+static void waitForConnectSuccessTimeoutHandler(le_timer_Ref_t timer);
+static void waitForRangeTimeoutHandler(le_timer_Ref_t timer);
+static void waitForHandleMappingsTimeoutHandler(le_timer_Ref_t timer);
+static void publishTimerHandler(le_timer_Ref_t timer);
+static void stdoutLineHandler(const char* line, size_t lineLength);
+static void continueInitialization(void);
+static bool tryParseAttempting(const char* line, size_t lineLength, char* macAddr);
+static bool tryParseNotification(
+    const char* line,
+    size_t lineLength,
+    uint16_t* notificationHandle,
+    uint8_t* notificationData,
+    size_t* notificationSize);
+static bool tryParseHandleRange(
+    const char* line, size_t lineLength, uint16_t* startHandle, uint16_t* endHandle);
+static bool tryParseHandleMapping(
+    const char* line, size_t lineLength, uint16_t* handle, char* uuid);
+static void notificationLineHandler(const char* line, size_t lineLength);
+static int initPipes(void);
+static void charWriteCmd(uint16_t handle, const uint8_t* data, size_t dataLength);
+static void sendCommand(const char* cmd);
+static void configureIrTemperatureSensor(void);
+static void configureHumiditySensor(void);
+static void configureBarometricPressureSensor(void);
+static void configureIO(void);
+static void configureOpticalSensor(void);
+static void configureMovementSensor(void);
+static void stdinHandler(int fd, short events);
+static void stdoutHandler(int fd, short events);
+static void stderrHandler(int fd, short events);
+static void childProcess(void);
+static void parentProcess(void);
+static void logData(const SensorReadings* reading, const SensorCalculation* calculation);
+static bool approxEq(float v1, float v2, float threshold);
+static void performSensorCalculation(
+    SensorCalculation* calculation,
+    const SensorReadings* currentReading,
+    const SensorReadings* previousReading);
+static void updateSensorTagOutputs(void);
+static void outputUpdateHandler(dataRouter_DataType_t type, const char* key, void* context);
+static void sigChldHandler(int signal);
+static void dumpBytes(const uint8_t* bytes, size_t numBytes) __attribute__((unused));
+
+// --------------------------------- STATIC VARIABLES
+
+// SensorTag Primary service UUIDs
+const char irTemperatureSensorServiceUUID[]      = "f000aa00-0451-4000-b000-000000000000";
+const char humiditySensorServiceUUID[]           = "f000aa20-0451-4000-b000-000000000000";
+const char barometricPressureSensorServiceUUID[] = "f000aa40-0451-4000-b000-000000000000";
+const char ioServiceUUID[]                       = "f000aa64-0451-4000-b000-000000000000";
+const char opticalSensorServiceUUID[]            = "f000aa70-0451-4000-b000-000000000000";
+const char movementSensorServiceUUID[]           = "f000aa80-0451-4000-b000-000000000000";
+const char registerServiceUUID[]                 = "f000ac00-0451-4000-b000-000000000000";
+const char connectionControlServiceUUID[]        = "f000ccc0-0451-4000-b000-000000000000";
+const char oadServiceUUID[]                      = "f000ffc0-0451-4000-b000-000000000000";
+const char genericAccessServiceUUID[]            = "00001800-0000-1000-8000-00805f9b34fb";
+const char genericAttributeServiceUUID[]         = "00001801-0000-1000-8000-00805f9b34fb";
+const char deviceInformationServiceUUID[]        = "0000180a-0000-1000-8000-00805f9b34fb";
+const char batteryServiceUUID[]                  = "0000180f-0000-1000-8000-00805f9b34fb";
+const char simpleKeysServiceUUID[]               = "0000ffe0-0000-1000-8000-00805f9b34fb";
+
+// Characteristics
+const char clientCharacteristicConfigurationDescriptorUUID[] =
+    "00002902-0000-1000-8000-00805f9b34fb";
+
+const char irTemperatureSensorDataCharacteristicUUID[]    = "f000aa01-0451-4000-b000-000000000000";
+const char irTemperatureSensorConfigurationCharacteristicUUID[] =
+    "f000aa02-0451-4000-b000-000000000000";
+const char irTemperatureSensorPeriodCharacteristicUUID[]  = "f000aa03-0451-4000-b000-000000000000";
+
+const char humiditySensorDataCharacteristicUUID[]         = "f000aa21-0451-4000-b000-000000000000";
+const char humiditySensorConfigurationCharacteristicUUID[] =
+    "f000aa22-0451-4000-b000-000000000000";
+const char humiditySensorPeriodCharacteristicUUID[]       = "f000aa23-0451-4000-b000-000000000000";
+
+const char barometricPressureSensorDataCharacteristicUUID[] =
+    "f000aa41-0451-4000-b000-000000000000";
+const char barometricPressureSensorConfigurationCharacteristicUUID[] =
+    "f000aa42-0451-4000-b000-000000000000";
+const char barometricPressureSensorPeriodCharacteristicUUID[] =
+    "f000aa44-0451-4000-b000-000000000000";
+
+const char ioDataCharacteristicUUID[]                     = "f000aa65-0451-4000-b000-000000000000";
+const char ioConfigurationCharacteristicUUID[]            = "f000aa66-0451-4000-b000-000000000000";
+
+const char opticalSensorDataCharacteristicUUID[]          = "f000aa71-0451-4000-b000-000000000000";
+const char opticalSensorConfigurationCharacteristicUUID[] = "f000aa72-0451-4000-b000-000000000000";
+const char opticalSensorPeriodCharacteristicUUID[]        = "f000aa73-0451-4000-b000-000000000000";
+
+const char movementSensorDataCharacteristicUUID[]         = "f000aa81-0451-4000-b000-000000000000";
+const char movementSensorConfigurationCharacteristicUUID[] =
+    "f000aa82-0451-4000-b000-000000000000";
+const char movementSensorPeriodCharacteristicUUID[]       = "f000aa83-0451-4000-b000-000000000000";
+
+const char simpleKeysDataCharacteristicUUID[] = "0000ffe0-0000-1000-8000-00805f9b34fb";
+
+static struct
+{
+    enum ProgramState programState;
+    struct
+    {
+        size_t currentPrimaryServiceOffset;
+        le_timer_Ref_t commandResponseTimer;
+    } initialization;
+    char deviceMacAddr[(6 * 2) + ((6 - 1) * 1) + 1]; // digits + colons + terminator
+    struct
+    {
+        int childStdout[2];
+        int childStderr[2];
+        int childStdin[2];
+    } pipes;
+    struct
+    {
+        le_fdMonitor_Ref_t childStdin;
+        le_fdMonitor_Ref_t childStdout;
+        le_fdMonitor_Ref_t childStderr;
+    } fdMonitors;
+    struct
+    {
+        bool redLedOn;
+        bool greenLedOn;
+        bool buzzerOn;
+    } outputStates;
+    le_timer_Ref_t publishTimer;
+    SensorReadings sensorReadings;
+    SensorReadings previousSensorReadings;
+    SensorCalculation sensorCalculations;
+    // All of the handles that we care about.  After initialization is complete, all of the values
+    // will be populated.
+    struct
+    {
+        struct
+        {
+            uint16_t data;
+            uint16_t notification;
+            uint16_t configuration;
+            uint16_t period;
+        } irTemperatureSensor;
+        struct
+        {
+            uint16_t data;
+            uint16_t notification;
+            uint16_t configuration;
+            uint16_t period;
+        } humiditySensor;
+        struct
+        {
+            uint16_t data;
+            uint16_t notification;
+            uint16_t configuration;
+            uint16_t period;
+        } barometricPressureSensor;
+        struct
+        {
+            uint16_t data;
+            uint16_t configuration;
+        } io;
+        struct
+        {
+            uint16_t data;
+            uint16_t notification;
+            uint16_t configuration;
+            uint16_t period;
+        } opticalSensor;
+        struct
+        {
+            uint16_t data;
+            uint16_t notification;
+            uint16_t configuration;
+            uint16_t period;
+        } movementSensor;
+    } handles;
+} m;
+
+// Table of handles to lookup.  By convention, all characteristics are assumed to be members of the
+// primary service that preceded it.
+static const struct HandleLookup handlesToLookup[] =
+{
+    LOOKUP_PRIMARY_SERVICE(irTemperatureSensorServiceUUID),
+    LOOKUP_CHARACTERISTIC(irTemperatureSensorDataCharacteristicUUID, &m.handles.irTemperatureSensor.data),
+    LOOKUP_CHARACTERISTIC(clientCharacteristicConfigurationDescriptorUUID, &m.handles.irTemperatureSensor.notification),
+    LOOKUP_CHARACTERISTIC(irTemperatureSensorConfigurationCharacteristicUUID, &m.handles.irTemperatureSensor.configuration),
+    LOOKUP_CHARACTERISTIC(irTemperatureSensorPeriodCharacteristicUUID, &m.handles.irTemperatureSensor.period),
+
+    LOOKUP_PRIMARY_SERVICE(humiditySensorServiceUUID),
+    LOOKUP_CHARACTERISTIC(humiditySensorDataCharacteristicUUID, &m.handles.humiditySensor.data),
+    LOOKUP_CHARACTERISTIC(clientCharacteristicConfigurationDescriptorUUID, &m.handles.humiditySensor.notification),
+    LOOKUP_CHARACTERISTIC(humiditySensorConfigurationCharacteristicUUID, &m.handles.humiditySensor.configuration),
+    LOOKUP_CHARACTERISTIC(humiditySensorPeriodCharacteristicUUID, &m.handles.humiditySensor.period),
+
+    LOOKUP_PRIMARY_SERVICE(barometricPressureSensorServiceUUID),
+    LOOKUP_CHARACTERISTIC(barometricPressureSensorDataCharacteristicUUID, &m.handles.barometricPressureSensor.data),
+    LOOKUP_CHARACTERISTIC(clientCharacteristicConfigurationDescriptorUUID, &m.handles.barometricPressureSensor.notification),
+    LOOKUP_CHARACTERISTIC(barometricPressureSensorConfigurationCharacteristicUUID, &m.handles.barometricPressureSensor.configuration),
+    LOOKUP_CHARACTERISTIC(barometricPressureSensorPeriodCharacteristicUUID, &m.handles.barometricPressureSensor.period),
+
+    LOOKUP_PRIMARY_SERVICE(ioServiceUUID),
+    LOOKUP_CHARACTERISTIC(ioDataCharacteristicUUID, &m.handles.io.data),
+    LOOKUP_CHARACTERISTIC(ioConfigurationCharacteristicUUID, &m.handles.io.configuration),
+
+    LOOKUP_PRIMARY_SERVICE(opticalSensorServiceUUID),
+    LOOKUP_CHARACTERISTIC(opticalSensorDataCharacteristicUUID, &m.handles.opticalSensor.data),
+    LOOKUP_CHARACTERISTIC(clientCharacteristicConfigurationDescriptorUUID, &m.handles.opticalSensor.notification),
+    LOOKUP_CHARACTERISTIC(opticalSensorConfigurationCharacteristicUUID, &m.handles.opticalSensor.configuration),
+    LOOKUP_CHARACTERISTIC(opticalSensorPeriodCharacteristicUUID, &m.handles.opticalSensor.period),
+
+    LOOKUP_PRIMARY_SERVICE(movementSensorServiceUUID),
+    LOOKUP_CHARACTERISTIC(movementSensorDataCharacteristicUUID, &m.handles.movementSensor.data),
+    LOOKUP_CHARACTERISTIC(clientCharacteristicConfigurationDescriptorUUID, &m.handles.movementSensor.notification),
+    LOOKUP_CHARACTERISTIC(movementSensorConfigurationCharacteristicUUID, &m.handles.movementSensor.configuration),
+    LOOKUP_CHARACTERISTIC(movementSensorPeriodCharacteristicUUID, &m.handles.movementSensor.period)
+};
+
+
+static void waitForConnectSuccessTimeoutHandler(le_timer_Ref_t timer)
+{
+    if (m.programState == STATE_WAIT_FOR_ATTEMPTING ||
+        m.programState == STATE_WAIT_FOR_CONNECT_SUCCESS)
+    {
+        LE_FATAL("Timed out waiting for connect");
+    }
+    else
+    {
+        LE_WARN(
+            "Received wait for connect success timeout in unexpected state (%d)", m.programState);
+    }
+}
+
+static void waitForRangeTimeoutHandler(le_timer_Ref_t timer)
+{
+    if (m.programState == STATE_HANDLE_LOOKUP_WAIT_FOR_RANGE)
+    {
+        LE_FATAL("Timed out waiting for handle range");
+    }
+    else
+    {
+        LE_WARN(
+            "Received wait for handle range timeout in unexpected state (%d)", m.programState);
+    }
+}
+
+static void waitForHandleMappingsTimeoutHandler(le_timer_Ref_t timer)
+{
+    if (m.programState == STATE_HANDLE_LOOKUP_WAIT_FOR_HANDLES)
+    {
+        size_t i;
+        for (
+            i = m.initialization.currentPrimaryServiceOffset + 1;
+            i < NUM_ARRAY_MEMBERS(handlesToLookup) && !handlesToLookup[i].isPrimaryService;
+            i++)
+        {
+            LE_FATAL_IF(
+                *(handlesToLookup[i].handleStorage) == 0,
+                "Failed to lookup handle for characteristic uuid=%s within primary service=%s",
+                handlesToLookup[i].uuid,
+                handlesToLookup[m.initialization.currentPrimaryServiceOffset].uuid);
+        }
+        m.initialization.currentPrimaryServiceOffset = i;
+        m.programState = STATE_HANDLE_LOOKUP_BEGIN;
+        continueInitialization();
+    }
+}
+
+static void publishTimerHandler(le_timer_Ref_t timer)
+{
+    performSensorCalculation(
+        &m.sensorCalculations,
+        &m.sensorReadings,
+        &m.previousSensorReadings);
+    memcpy(&m.previousSensorReadings, &m.sensorReadings, sizeof(SensorReadings));
+
+    logData(&m.sensorReadings, &m.sensorCalculations);
+
+    // Publish data
+    time_t now = time(NULL);
+
+    // Readings
+
+    dataRouter_WriteFloat(
+        KEY_IR_OBJECT_TEMPERATURE, m.sensorReadings.irTemperature.objectTemperatureInCelcius, now);
+    dataRouter_WriteFloat(
+        KEY_IR_AMBIENT_TEMPERATURE,
+        m.sensorReadings.irTemperature.ambientTemperatureInCelcius,
+        now);
+    dataRouter_WriteFloat(
+        KEY_HUMIDITY_TEMPERATURE, m.sensorReadings.humidity.temperatureInCelcius, now);
+    dataRouter_WriteFloat(
+        KEY_HUMIDITY_HUMIDITY, m.sensorReadings.humidity.humidityInRelativePercent, now);
+    dataRouter_WriteFloat(
+        KEY_BAROMETER_TEMPERATURE, m.sensorReadings.barometricPressure.temperatureInCelcius, now);
+    dataRouter_WriteFloat(
+        KEY_BAROMETER_PRESSURE, m.sensorReadings.barometricPressure.pressureInHectoPascal, now);
+    dataRouter_WriteFloat(
+        KEY_OPTICAL_LUMINOSITY, m.sensorReadings.optical.luminosityInLux, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_GYROSCOPE_X, m.sensorReadings.movement.gyroInDegreesPerSecond.x, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_GYROSCOPE_Y, m.sensorReadings.movement.gyroInDegreesPerSecond.y, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_GYROSCOPE_Z, m.sensorReadings.movement.gyroInDegreesPerSecond.z, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_ACCELEROMETER_X, m.sensorReadings.movement.accelerometerInG.x, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_ACCELEROMETER_Y, m.sensorReadings.movement.accelerometerInG.y, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_ACCELEROMETER_Z, m.sensorReadings.movement.accelerometerInG.z, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_MAGNETOMETER_X, m.sensorReadings.movement.magnetometerInMicroTesla.x, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_MAGNETOMETER_Y, m.sensorReadings.movement.magnetometerInMicroTesla.y, now);
+    dataRouter_WriteFloat(
+        KEY_MOVEMENT_MAGNETOMETER_Z, m.sensorReadings.movement.magnetometerInMicroTesla.z, now);
+
+    // Calculations
+
+    dataRouter_WriteFloat(KEY_SHOCK, m.sensorCalculations.shock, now);
+    dataRouter_WriteInteger(KEY_ORIENTATION, m.sensorCalculations.orientation, now);
+    dataRouter_WriteFloat(KEY_COMPASS, m.sensorCalculations.compassAngle, now);
+
+    // check alarms
+    checkTemperatureAlarm(m.sensorReadings.humidity.temperatureInCelcius);
+    checkHumidityAlarm(m.sensorReadings.humidity.humidityInRelativePercent);
+    checkLuminosityAlarm(m.sensorReadings.optical.luminosityInLux);
+    checkShockAlarm(m.sensorCalculations.shock);
+    checkOrientationAlarm(m.sensorCalculations.orientation);
+}
+
+static void stdoutLineHandler(const char* line, size_t lineLength)
+{
+    char commandPrefix[64];
+    int snprintfResult = snprintf(
+        commandPrefix,
+        sizeof(commandPrefix),
+        "[%s][LE]> ",
+        m.deviceMacAddr);
+    LE_ASSERT(snprintfResult > 0);
+    if (strncmp(line, commandPrefix, snprintfResult) == 0)
+    {
+        LE_INFO("Ignoring command echo: %s", line);
+        return;
+    }
+
+    // This is the version of the prompt with blue highlighting indicating connectivity
+    snprintfResult = snprintf(
+        commandPrefix,
+        sizeof(commandPrefix),
+        "\e[0;94m[%s]\e[0m[LE]> ",
+        m.deviceMacAddr);
+    LE_ASSERT(snprintfResult > 0);
+    if (strncmp(line, commandPrefix, snprintfResult) == 0)
+    {
+        LE_INFO("Ignoring command echo: %s", line);
+        return;
+    }
+
+    const char strangeCommandPrefix[] = "<[0m[LE]> ";
+    if (strncmp(line, strangeCommandPrefix, strlen(strangeCommandPrefix)) == 0)
+    {
+        LE_INFO("Ignoring command echo: %s", line);
+        return;
+    }
+
+    LE_INFO("Processing because this isn't a command echo: '%s'", line);
+
+    switch (m.programState)
+    {
+        case STATE_WAIT_FOR_ATTEMPTING:
+        {
+            char macAddr[18];
+            LE_FATAL_IF(
+                !tryParseAttempting(line, lineLength, macAddr),
+                "Received unexpected output while trying to connect (%s)",
+                line);
+            m.programState = STATE_WAIT_FOR_CONNECT_SUCCESS;
             break;
         }
-        // printf("new token: %s\n", newtoken);
-        sscanf(newtoken, "%x", &new);
-        if (index >= MAX_SENSOR_RAW)
-            break;
-        *(*value + index) = new;
-        index++;
-    }
-    *len = index;
 
-    return 0;
+        case STATE_WAIT_FOR_CONNECT_SUCCESS:
+        {
+            LE_FATAL_IF(
+                strcmp(line, "Connection successful") != 0,
+                "Received unexpected output while trying to connect (%s)",
+                line);
+            le_timer_Stop(m.initialization.commandResponseTimer);
+            m.programState = STATE_HANDLE_LOOKUP_BEGIN;
+            continueInitialization();
+            break;
+        }
+
+        case STATE_HANDLE_LOOKUP_WAIT_FOR_RANGE:
+        {
+            uint16_t startHandle;
+            uint16_t endHandle;
+            LE_FATAL_IF(
+                !tryParseHandleRange(line, lineLength, &startHandle, &endHandle),
+                "Received unexpected output while waiting for a handle range (%s)",
+                line);
+            le_timer_Stop(m.initialization.commandResponseTimer);
+            char charDescCmd[128];
+            sprintf(charDescCmd, "char-desc 0x%04x 0x%04x", startHandle, endHandle);
+            LE_ASSERT_OK(le_timer_SetMsInterval(m.initialization.commandResponseTimer, 2000));
+            LE_ASSERT_OK(
+                le_timer_SetHandler(
+                    m.initialization.commandResponseTimer, waitForHandleMappingsTimeoutHandler));
+            LE_ASSERT_OK(le_timer_Start(m.initialization.commandResponseTimer));
+            sendCommand(charDescCmd);
+            le_timer_Start(m.initialization.commandResponseTimer);
+            m.programState = STATE_HANDLE_LOOKUP_WAIT_FOR_HANDLES;
+            break;
+        }
+
+        case STATE_HANDLE_LOOKUP_WAIT_FOR_HANDLES:
+        {
+            uint16_t handle;
+            char uuid[37];
+            LE_FATAL_IF(
+                !tryParseHandleMapping(line, lineLength, &handle, uuid),
+                "Received unexpected output while waiting for a handle mapping (%s)",
+                line);
+            if (strlen(uuid) == 4)
+            {
+                // Convert abbreviated UUID, into full length one.
+                char temp[5] = {0};
+                strcpy(temp, uuid);
+                snprintf(uuid, sizeof(uuid), "0000%s-0000-1000-8000-00805f9b34fb", temp);
+            }
+            for (
+                size_t i = m.initialization.currentPrimaryServiceOffset + 1;
+                i < NUM_ARRAY_MEMBERS(handlesToLookup) && !handlesToLookup[i].isPrimaryService;
+                i++)
+            {
+                if (strcmp(uuid, handlesToLookup[i].uuid) == 0)
+                {
+                    *(handlesToLookup[i].handleStorage) = handle;
+                    break;
+                }
+            }
+            break;
+        }
+
+        case STATE_WAIT_FOR_NOTIFICATIONS:
+            notificationLineHandler(line, lineLength);
+            break;
+
+        default:
+            LE_FATAL("In unexpected state (%d)", m.programState);
+            break;
+    }
 }
 
+static void continueInitialization(void)
+{
+    switch (m.programState)
+    {
+        case STATE_BEGIN:
+        {
+            m.initialization.commandResponseTimer =
+                le_timer_Create("gatttool command response timer");
+            LE_ASSERT_OK(le_timer_SetMsInterval(m.initialization.commandResponseTimer, 3000));
+            LE_ASSERT_OK(
+                le_timer_SetHandler(
+                    m.initialization.commandResponseTimer, waitForConnectSuccessTimeoutHandler));
+            LE_ASSERT_OK(le_timer_Start(m.initialization.commandResponseTimer));
+            sendCommand("connect");
+            m.programState = STATE_WAIT_FOR_ATTEMPTING;
+            break;
+        }
+
+        case STATE_HANDLE_LOOKUP_BEGIN:
+        {
+            if (m.initialization.currentPrimaryServiceOffset >= NUM_ARRAY_MEMBERS(handlesToLookup))
+            {
+                configureIrTemperatureSensor();
+                configureHumiditySensor();
+                configureBarometricPressureSensor();
+                configureIO();
+                configureOpticalSensor();
+                configureMovementSensor();
+
+                dataRouter_AddDataUpdateHandler(KEY_RED_LED, outputUpdateHandler, NULL);
+                dataRouter_AddDataUpdateHandler(KEY_GREEN_LED, outputUpdateHandler, NULL);
+                dataRouter_AddDataUpdateHandler(KEY_BUZZER, outputUpdateHandler, NULL);
+
+                m.publishTimer = le_timer_Create("bleSensorInterface publish");
+                LE_ASSERT(le_timer_SetHandler(m.publishTimer, &publishTimerHandler) == LE_OK);
+                LE_ASSERT(le_timer_SetMsInterval(m.publishTimer, PUBLISH_PERIOD_IN_MS) == LE_OK);
+                LE_ASSERT(le_timer_SetRepeat(m.publishTimer, 0) == LE_OK); // repeat forever
+                LE_ASSERT(le_timer_Start(m.publishTimer) == LE_OK);
+
+                m.programState = STATE_WAIT_FOR_NOTIFICATIONS;
+            }
+            else
+            {
+                const struct HandleLookup* currentPrimaryServiceLookup = &handlesToLookup[m.initialization.currentPrimaryServiceOffset];
+                LE_FATAL_IF(!currentPrimaryServiceLookup->isPrimaryService, "Expected primary service");
+                char primaryCmd[128] = "primary ";
+                strcat(primaryCmd, currentPrimaryServiceLookup->uuid);
+                LE_ASSERT_OK(le_timer_SetMsInterval(m.initialization.commandResponseTimer, 2000));
+                LE_ASSERT_OK(
+                    le_timer_SetHandler(
+                        m.initialization.commandResponseTimer, waitForRangeTimeoutHandler));
+                LE_ASSERT_OK(le_timer_Start(m.initialization.commandResponseTimer));
+                sendCommand(primaryCmd);
+                m.programState = STATE_HANDLE_LOOKUP_WAIT_FOR_RANGE;
+            }
+            break;
+        }
+
+        default:
+            LE_FATAL("In unexpected state (%d)", m.programState);
+            break;
+    }
+}
+
+// TODO: better checking on macAddr length
+static bool tryParseAttempting(const char* line, size_t lineLength, char* macAddr)
+{
+    return sscanf(line, "Attempting to connect to %s", macAddr) == 1;
+}
+
+static bool tryParseNotification
+(
+    const char* line,
+    size_t lineLength,
+    uint16_t* notificationHandle,
+    uint8_t* notificationData,
+    size_t* notificationSize
+)
+{
+    // Expect: Notification handle = 0x0024 value: 00 aa 11 bb
+    char valueString[lineLength];
+    size_t bytesParsed = 0;
+    if(sscanf(
+            line,
+            "Notification handle = 0x%04" SCNx16 " value: %[0-9 a-z]",
+            notificationHandle,
+            valueString) != 2)
+    {
+        return false;
+    }
+    const size_t valueLength = strlen(valueString);
+    *notificationSize = 0;
+    for (size_t i = 0; i < valueLength; i += 3)
+    {
+        if (*notificationSize >= MAX_NOTIFICATION_SIZE)
+        {
+            LE_WARN("Cannot fit all of the notification data in the buffer");
+            return false;
+        }
+        if (sscanf(&valueString[i], "%02" SCNx8, &(notificationData[bytesParsed])) != 1)
+        {
+            LE_WARN("Failed parsing on what appeared to be notification data");
+            return false;
+        }
+        bytesParsed++;
+    }
+
+    *notificationSize = bytesParsed;
+    return true;
+}
+
+static bool tryParseHandleRange(
+    const char* line, size_t lineLength, uint16_t* startHandle, uint16_t* endHandle)
+{
+    const int numScanned = sscanf(
+        line,
+        "Starting handle: 0x%04" SCNx16 " Ending handle: 0x%04" SCNx16,
+        startHandle,
+        endHandle);
+    return numScanned == 2;
+}
+
+// TODO: make sure we don't overrun uuid
+static bool tryParseHandleMapping(
+    const char* line, size_t lineLength, uint16_t* handle, char* uuid)
+{
+    const int numScanned = sscanf(line, "handle: 0x%04" SCNx16 ", uuid: %s", handle, uuid);
+    return numScanned == 2;
+}
+
+static void notificationLineHandler(const char* line, size_t lineLength)
+{
+    uint16_t notificationHandle;
+    uint8_t notificationData[MAX_NOTIFICATION_SIZE];
+    size_t notificationSize;
+    LE_FATAL_IF(
+        !tryParseNotification(line, lineLength, &notificationHandle, notificationData, &notificationSize),
+        "Received a line of output which is not a notification (%s)",
+        line);
+    if (notificationHandle == m.handles.irTemperatureSensor.data)
+    {
+        LE_FATAL_IF(
+            notificationSize != 4,
+            "IR temperature sensor notification provided %d bytes, but 2 bytes were "
+            "expected",
+            notificationSize);
+        convertIRTemperatureSensorData(
+            notificationData,
+            &m.sensorReadings.irTemperature.ambientTemperatureInCelcius,
+            &m.sensorReadings.irTemperature.objectTemperatureInCelcius);
+    }
+    else if (notificationHandle == m.handles.humiditySensor.data)
+    {
+        LE_FATAL_IF(
+            notificationSize != 4,
+            "Humidity sensor notification provided %d bytes, but 2 bytes were expected",
+            notificationSize);
+        convertHumiditySensorData(
+            notificationData,
+            &m.sensorReadings.humidity.temperatureInCelcius,
+            &m.sensorReadings.humidity.humidityInRelativePercent);
+    }
+    else if (notificationHandle == m.handles.barometricPressureSensor.data)
+    {
+        LE_FATAL_IF(
+            notificationSize != 6,
+            "Barometric pressure sensor notification provided %d bytes, but 3 bytes were "
+            "expected",
+            notificationSize);
+        convertBarometricPressureSensorData(
+            notificationData,
+            &m.sensorReadings.barometricPressure.temperatureInCelcius,
+            &m.sensorReadings.barometricPressure.pressureInHectoPascal);
+    }
+    else if (notificationHandle == m.handles.opticalSensor.data)
+    {
+        LE_FATAL_IF(
+            notificationSize != 2,
+            "Optical sensor notification provided %d bytes, but 2 bytes were expected",
+            notificationSize);
+        convertOpticalSensorData(notificationData, &m.sensorReadings.optical.luminosityInLux);
+    }
+    else if (notificationHandle == m.handles.movementSensor.data)
+    {
+        LE_FATAL_IF(
+            notificationSize != 18,
+            "Movement sensor notification provided %d bytes, but 18 bytes were expected",
+            notificationSize);
+        convertMovementSensorData(
+            notificationData,
+            ACC_RANGE_2G,
+            &m.sensorReadings.movement.accelerometerInG.x,
+            &m.sensorReadings.movement.accelerometerInG.y,
+            &m.sensorReadings.movement.accelerometerInG.z,
+            &m.sensorReadings.movement.gyroInDegreesPerSecond.x,
+            &m.sensorReadings.movement.gyroInDegreesPerSecond.y,
+            &m.sensorReadings.movement.gyroInDegreesPerSecond.z,
+            &m.sensorReadings.movement.magnetometerInMicroTesla.x,
+            &m.sensorReadings.movement.magnetometerInMicroTesla.y,
+            &m.sensorReadings.movement.magnetometerInMicroTesla.z);
+    }
+    else
+    {
+        LE_FATAL("Received unexpected notification for handle (%d)", notificationHandle);
+    }
+}
+
+static int initPipes(void)
+{
+    int r;
+    r = pipe(m.pipes.childStdout);
+    if (r != 0)
+    {
+        return r;
+    }
+    r = pipe(m.pipes.childStderr);
+    if (r != 0)
+    {
+        return r;
+    }
+    r = pipe(m.pipes.childStdin);
+    return r;
+}
+
+
+static void charWriteCmd(uint16_t handle, const uint8_t* data, size_t dataLength)
+{
+    char buffer[32];
+    sprintf(buffer, "char-write-cmd 0x%04" PRIx16 " ", handle);
+    size_t bufferLen = strlen(buffer);
+    ssize_t writeResult = write(m.pipes.childStdin[PIPE_WRITE_END_INDEX], buffer, bufferLen);
+    LE_ASSERT(writeResult == bufferLen);
+    for (size_t i = 0; i < dataLength; i++)
+    {
+        sprintf(buffer, "%02" PRIx8, data[i]);
+        LE_ASSERT(write(m.pipes.childStdin[PIPE_WRITE_END_INDEX], buffer, 2) == 2);
+    }
+    LE_ASSERT(write(m.pipes.childStdin[PIPE_WRITE_END_INDEX], "\n", 1) == 1);
+}
+
+static void sendCommand(const char* cmd)
+{
+    size_t cmdLength = strlen(cmd);
+    char* cmdBuffer = calloc(cmdLength + 2, 1);
+    LE_ASSERT(cmdBuffer != NULL);
+    memcpy(cmdBuffer, cmd, cmdLength);
+    cmdBuffer[cmdLength] = '\n';
+
+    ssize_t writeResult = write(m.pipes.childStdin[PIPE_WRITE_END_INDEX], cmdBuffer, cmdLength + 1);
+    LE_FATAL_IF(
+        writeResult != cmdLength + 1,
+        "write result was %d when trying to write %d bytes",
+        writeResult,
+        cmdLength);
+    free(cmdBuffer);
+}
+
+static void configureIrTemperatureSensor(void)
+{
+    LE_DEBUG("Configuring IR temperature sensor");
+    const uint8_t period[] = {200}; // n * 10ms
+    charWriteCmd(m.handles.irTemperatureSensor.period, period, sizeof(period));
+    const uint8_t enableNotifications[] = {0x01, 0x00};
+    charWriteCmd(
+        m.handles.irTemperatureSensor.notification,
+        enableNotifications,
+        sizeof(enableNotifications));
+    const uint8_t configuration[] = {0x01};
+    charWriteCmd(
+        m.handles.irTemperatureSensor.configuration, configuration, sizeof(configuration));
+}
+
+static void configureHumiditySensor(void)
+{
+    LE_DEBUG("Configuring humidity sensor");
+    const uint8_t period[] = {200}; // n * 10ms
+    charWriteCmd(m.handles.humiditySensor.period, period, sizeof(period));
+    const uint8_t enableNotifications[] = {0x01, 0x00};
+    charWriteCmd(
+        m.handles.humiditySensor.notification, enableNotifications, sizeof(enableNotifications));
+    const uint8_t configuration[] = {0x01};
+    charWriteCmd(m.handles.humiditySensor.configuration, configuration, sizeof(configuration));
+}
+
+static void configureBarometricPressureSensor(void)
+{
+    LE_DEBUG("Configuring barometric pressure sensor");
+    const uint8_t period[] = {200}; // n * 10ms
+    charWriteCmd(m.handles.barometricPressureSensor.period, period, sizeof(period));
+    const uint8_t enableNotifications[] = {0x01, 0x00};
+    charWriteCmd(
+        m.handles.barometricPressureSensor.notification,
+        enableNotifications,
+        sizeof(enableNotifications));
+    const uint8_t configuration[] = {0x01};
+    charWriteCmd(
+        m.handles.barometricPressureSensor.configuration, configuration, sizeof(configuration));
+}
+
+static void configureIO(void)
+{
+    LE_DEBUG("Configuring I/O");
+    const uint8_t data[] = {0x00}; // Turn buzzer and LEDs off
+    charWriteCmd(m.handles.io.data, data, sizeof(data));
+    const uint8_t configuration[] = {0x01}; // set to remote mode
+    charWriteCmd(m.handles.io.configuration, configuration, sizeof(configuration));
+}
+
+static void configureOpticalSensor(void)
+{
+    LE_DEBUG("Configuring optical sensor");
+    const uint8_t period[] = {200}; // n * 10ms
+    charWriteCmd(m.handles.opticalSensor.period, period, sizeof(period));
+    const uint8_t enableNotifications[] = {0x01, 0x00};
+    charWriteCmd(
+        m.handles.opticalSensor.notification, enableNotifications, sizeof(enableNotifications));
+    const uint8_t configuration[] = {0x01};
+    charWriteCmd(m.handles.opticalSensor.configuration, configuration, sizeof(configuration));
+}
+
+static void configureMovementSensor(void)
+{
+    LE_INFO("Configuring movement sensor - data handle is %d", m.handles.movementSensor.data);
+    const uint8_t period[] = {200}; // n * 10ms
+    charWriteCmd(m.handles.movementSensor.period, period, sizeof(period));
+    // Enable gyroscope, accelerometer, magnetometer, enable wake on motion feature and set
+    // accelerometer to 2G range.
+    const uint8_t configuration[] = {0x7F, 0x00}; // Disable wake on motion - report forever
+    //const uint8_t configuration[] = {0xFF, 0x00};
+    charWriteCmd(m.handles.movementSensor.configuration, configuration, sizeof(configuration));
+    const uint8_t enableNotifications[] = {0x01, 0x00};
+    charWriteCmd(
+        m.handles.movementSensor.notification, enableNotifications, sizeof(enableNotifications));
+}
+
+static void stdinHandler(int fd, short events)
+{
+    LE_ASSERT(fd == m.pipes.childStdin[PIPE_WRITE_END_INDEX]);
+    if (events & POLLERR)
+    {
+        LE_FATAL("Read end of childStdinPipe is closed");
+    }
+}
+
+static void dumpBytes(const uint8_t* bytes, size_t numBytes)
+{
+    while (numBytes != 0)
+    {
+        switch (numBytes)
+        {
+            case 1:
+                LE_INFO("  %02x | %c", bytes[0], bytes[0]);
+                numBytes -= 1;
+                bytes += 1;
+                break;
+
+            case 2:
+                LE_INFO("  %02x %02x | %c %c", bytes[0], bytes[1], bytes[0], bytes[1]);
+                numBytes -= 2;
+                bytes += 2;
+                break;
+
+            case 3:
+                LE_INFO(
+                    "  %02x %02x %02x | %c %c %c",
+                    bytes[0], bytes[1], bytes[2], bytes[0], bytes[1], bytes[2]);
+                numBytes -= 3;
+                bytes += 3;
+                break;
+
+            case 4:
+                LE_INFO(
+                    "  %02x %02x %02x %02x | %c %c %c %c",
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[0], bytes[1], bytes[2], bytes[3]);
+                numBytes -= 4;
+                bytes += 4;
+                break;
+
+            case 5:
+                LE_INFO(
+                    "  %02x %02x %02x %02x %02x | %c %c %c %c %c",
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4],
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
+                numBytes -= 5;
+                bytes += 5;
+                break;
+
+            case 6:
+                LE_INFO(
+                    "  %02x %02x %02x %02x %02x %02x | %c %c %c %c %c %c",
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5],
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]);
+                numBytes -= 6;
+                bytes += 6;
+                break;
+
+            case 7:
+                LE_INFO(
+                    "  %02x %02x %02x %02x %02x %02x %02x | %c %c %c %c %c %c %c",
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6]);
+                numBytes -= 7;
+                bytes += 7;
+                break;
+
+            default:
+                LE_INFO(
+                    "  %02x %02x %02x %02x %02x %02x %02x %02x | %c %c %c %c %c %c %c %c",
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]);
+                numBytes -= 8;
+                bytes += 8;
+                break;
+        }
+    }
+}
+
+static void stdoutHandler(int fd, short events)
+{
+    static char line[256];
+    static size_t numCharsInLineBuffer = 0;
+    static size_t cursorPosition = 0;
+    static bool processingEscape = false;
+
+    LE_ASSERT(fd == m.pipes.childStdout[PIPE_READ_END_INDEX]);
+
+    if (events & POLLIN)
+    {
+        uint8_t buffer[1024];
+        const ssize_t readResult = read(fd, buffer, sizeof(buffer));
+
+        LE_FATAL_IF(
+            readResult <= 0, "Unexpected read result from gatttool stdout pipe (%d)", readResult);
+        const size_t numRead = readResult;
+        // DEBUG
+        //LE_INFO("Read %d bytes from stdout and the bytes are:", numRead);
+        //dumpBytes(buffer, numRead);
+        // END DEBUG
+        for (size_t bufferOffset = 0; bufferOffset < numRead; bufferOffset++)
+        {
+            LE_FATAL_IF(
+                numCharsInLineBuffer == sizeof(line),
+                "No room to place more characters in the line buffer");
+            if (buffer[bufferOffset] == '\n')
+            {
+                // Remove any trailing spaces from the string
+                for (int i = numCharsInLineBuffer - 1; i != 0; i--)
+                {
+                    if (line[i] == ' ')
+                    {
+                        numCharsInLineBuffer--;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                line[numCharsInLineBuffer] = '\0';
+                stdoutLineHandler(line, numCharsInLineBuffer);
+                numCharsInLineBuffer = 0;
+                cursorPosition = 0;
+            }
+            else if (buffer[bufferOffset] == '\r')
+            {
+                cursorPosition = 0;
+            }
+            else if (buffer[bufferOffset] == '\b')
+            {
+                if (cursorPosition > 0)
+                {
+                    cursorPosition--;
+                }
+            }
+            else if (buffer[bufferOffset] == 0x1B) // esc
+            {
+                processingEscape = true;
+            }
+            else if (processingEscape && buffer[bufferOffset] == 'm')
+            {
+                processingEscape = false;
+            }
+            else if (!processingEscape)
+            {
+                line[cursorPosition++] = buffer[bufferOffset];
+                if (cursorPosition > numCharsInLineBuffer)
+                {
+                    numCharsInLineBuffer = cursorPosition;
+                }
+            }
+        }
+    }
+
+    if (events & POLLHUP)
+    {
+        le_fdMonitor_Delete(m.fdMonitors.childStdout);
+        LE_FATAL("Child process has closed the FD for stdout");
+    }
+}
+
+static void stderrHandler(int fd, short events)
+{
+    LE_ASSERT(fd == m.pipes.childStderr[PIPE_READ_END_INDEX]);
+    char buffer[128] = {0};
+    const ssize_t readResult = read(fd, buffer, sizeof(buffer));
+    LE_FATAL_IF(
+        readResult <= 0, "Unexpected read result from gatttool stderr pipe (%d)", readResult);
+    LE_FATAL("An fd notification was received on stderr.  stderr contains: '%s'", buffer);
+}
+
+static void childProcess(void)
+{
+    // Close the original standard file handles of this process
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+
+    // Close the ends of the pipe which this process does not need
+    close(m.pipes.childStdin[PIPE_WRITE_END_INDEX]);
+    close(m.pipes.childStdout[PIPE_READ_END_INDEX]);
+    close(m.pipes.childStderr[PIPE_READ_END_INDEX]);
+
+    // Copy the file descriptors associated with the pipe into the standard numbers
+    dup2(m.pipes.childStdin[PIPE_READ_END_INDEX], STDIN_FILENO);
+    dup2(m.pipes.childStdout[PIPE_WRITE_END_INDEX], STDOUT_FILENO);
+    dup2(m.pipes.childStderr[PIPE_WRITE_END_INDEX], STDERR_FILENO);
+
+    // Instantiate gatttool
+    char deviceArg[32] = "--device=";
+    strncat(deviceArg, m.deviceMacAddr, sizeof(deviceArg));
+    char* argv[] = {"/legato/systems/current/bin/gatttool", "--interactive", deviceArg, 0};
+    int r = execvp(argv[0], argv);
+    if (r == -1)
+    {
+        // error has ocurred.  I don't think we can LE_ASSERT or LE_FATAL because stdout/stderr are
+        // already closed.
+        exit(1);
+    }
+}
+
+static void parentProcess(void)
+{
+    // Close the ends of the pipe which this process does not need
+    close(m.pipes.childStdin[PIPE_READ_END_INDEX]);
+    close(m.pipes.childStdout[PIPE_WRITE_END_INDEX]);
+    close(m.pipes.childStderr[PIPE_WRITE_END_INDEX]);
+
+    m.fdMonitors.childStdin = le_fdMonitor_Create(
+        "gatttool stdin",
+        m.pipes.childStdin[PIPE_WRITE_END_INDEX],
+        stdinHandler,
+        POLLERR);
+    m.fdMonitors.childStdout = le_fdMonitor_Create(
+        "gatttool stdout",
+        m.pipes.childStdout[PIPE_READ_END_INDEX],
+        stdoutHandler,
+        POLLIN | POLLHUP);
+    m.fdMonitors.childStderr = le_fdMonitor_Create(
+        "gatttool stderr",
+        m.pipes.childStderr[PIPE_READ_END_INDEX],
+        stderrHandler,
+        POLLIN | POLLHUP);
+
+    dataRouter_SessionStart("eu.airvantage.net", "SWI", true, DATAROUTER_CACHE);
+
+    m.programState = STATE_BEGIN;
+    continueInitialization();
+}
+
+static void logData
+(
+    const SensorReadings* reading,
+    const SensorCalculation* calculation
+)
+{
+    LE_INFO(
+        "ir: object temperature=%f, ambient temperature=%f",
+        reading->irTemperature.objectTemperatureInCelcius,
+        reading->irTemperature.ambientTemperatureInCelcius);
+    LE_INFO(
+        "humidity: temperature=%f, humidity=%f",
+        reading->humidity.temperatureInCelcius,
+        reading->humidity.humidityInRelativePercent);
+    LE_INFO(
+        "barometric pressure: temperature=%f, pressure=%f",
+        reading->barometricPressure.temperatureInCelcius,
+        reading->barometricPressure.pressureInHectoPascal);
+    LE_INFO("Optical: luminosity in lux=%f", reading->optical.luminosityInLux);
+    LE_INFO(
+        "movement/gyro: x=%f, y=%f, z=%f",
+        reading->movement.gyroInDegreesPerSecond.x,
+        reading->movement.gyroInDegreesPerSecond.y,
+        reading->movement.gyroInDegreesPerSecond.z);
+    LE_INFO(
+        "movement/acceleration: x=%f, y=%f, z=%f",
+        reading->movement.accelerometerInG.x,
+        reading->movement.accelerometerInG.y,
+        reading->movement.accelerometerInG.z);
+    LE_INFO(
+        "movement/magnetometer: x=%f, y=%f, z=%f",
+        reading->movement.magnetometerInMicroTesla.x,
+        reading->movement.magnetometerInMicroTesla.y,
+        reading->movement.magnetometerInMicroTesla.z);
+    LE_INFO(
+        "Calculations: compassAngle=%f, shock=%f, orientation=%d",
+        calculation->compassAngle,
+        calculation->shock,
+        calculation->orientation);
+}
+
+static bool approxEq(float v1, float v2, float threshold)
+{
+    return (abs(v1 - v2) < threshold);
+}
+
+static void performSensorCalculation(
+    SensorCalculation* calculation,
+    const SensorReadings* currentReading,
+    const SensorReadings* previousReading)
+{
+    // Compass Angle
+    // TODO: Calculation is incorrect.  We must take the orientation into account to know which two
+    // axis are the horizontal ones and know what a positive/negative value means.
+    calculation->compassAngle = currentReading->movement.magnetometerInMicroTesla.x == 0.0 ?
+        0.0 :
+        (atan(
+            currentReading->movement.magnetometerInMicroTesla.y /
+            currentReading->movement.magnetometerInMicroTesla.x) * 360.0) / 3.14;
+
+    // Shock
+    const float deltaX =
+        currentReading->movement.accelerometerInG.x - previousReading->movement.accelerometerInG.x;
+    const float deltaY =
+        currentReading->movement.accelerometerInG.y - previousReading->movement.accelerometerInG.y;
+    const float deltaZ =
+        currentReading->movement.accelerometerInG.z - previousReading->movement.accelerometerInG.z;
+    calculation->shock = sqrt((deltaX * deltaX) + (deltaY * deltaY) + (deltaZ * deltaZ));
+
+    // Orientation
+    float allowableError = 0.2;
+    if (approxEq(currentReading->movement.accelerometerInG.x, 1.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.y, 0.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.z, 0.0, allowableError))
+    {
+        calculation->orientation = 1;
+    }
+    else if (approxEq(currentReading->movement.accelerometerInG.x, -1.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.y, 0.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.z, 0.0, allowableError))
+    {
+        calculation->orientation = 2;
+    }
+    else if (approxEq(currentReading->movement.accelerometerInG.x, 0.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.y, 1.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.z, 0.0, allowableError))
+    {
+        calculation->orientation = 3;
+    }
+    else if (approxEq(currentReading->movement.accelerometerInG.x, 0.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.y, -1.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.z, 0.0, allowableError))
+    {
+        calculation->orientation = 4;
+    }
+    else if (approxEq(currentReading->movement.accelerometerInG.x, 0.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.y, 0.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.z, 1.0, allowableError))
+    {
+        calculation->orientation = 5;
+    }
+    else if (approxEq(currentReading->movement.accelerometerInG.x, 0.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.y, 0.0, allowableError) &&
+        approxEq(currentReading->movement.accelerometerInG.z, -1.0, allowableError))
+    {
+        calculation->orientation = 6;
+    }
+    else
+    {
+        // Unknown
+        calculation->orientation = 0;
+    }
+}
+
+static void updateSensorTagOutputs(void)
+{
+    // Bits
+    //  0 -> Red LED
+    //  1 -> Green LED
+    //  2 -> Buzzer
+    const uint8_t value[] =
+    {
+        ((m.outputStates.redLedOn ? 1 : 0) << 0) |
+        ((m.outputStates.greenLedOn ? 1 : 0) << 1) |
+        ((m.outputStates.buzzerOn ? 1 : 0) << 2)
+    };
+    charWriteCmd(m.handles.io.data, value, sizeof(value));
+}
+
+static void outputUpdateHandler(
+    dataRouter_DataType_t type,
+    const char* key,
+    void* context)
+{
+    LE_FATAL_IF(
+        type != DATAROUTER_BOOLEAN,
+        "Output update handler received update with unexpected type");
+    uint32_t timestamp;
+    if (strcmp(key, KEY_RED_LED) == 0)
+    {
+        dataRouter_ReadBoolean(key, &m.outputStates.redLedOn, &timestamp);
+    }
+    else if (strcmp(key, KEY_GREEN_LED) == 0)
+    {
+        dataRouter_ReadBoolean(key, &m.outputStates.greenLedOn, &timestamp);
+    }
+    else if (strcmp(key, KEY_BUZZER) == 0)
+    {
+        dataRouter_ReadBoolean(key, &m.outputStates.buzzerOn, &timestamp);
+    }
+    else
+    {
+        LE_FATAL("Received update for unexpected key (%s)", key);
+    }
+    updateSensorTagOutputs();
+}
+
+static void sigChldHandler(int signal)
+{
+    LE_ASSERT(signal == SIGCHLD);
+    LE_FATAL("Caught SIGCHLD signal indicating gatttool has exited");
+}
 
 COMPONENT_INIT
 {
-    FILE *fp;
-    char mac[(6 * 2) + ((6 - 1) * 1) + 1]; // digits + colons + terminator
-    const char*   tool = "/legato/systems/current/bin/gatttool";
-    int           i, len;
-    int           rawValue[MAX_SENSOR_RAW];
-    int*          p    = rawValue;
-    bool          flag = true;
-    int16_t       data1;
-    int16_t       data2;
-    int16_t       data3;
-    float         value1, value2, value3;
-    float         lastValue1, lastValue2, lastValue3;
-    float         accDiff, accDiffX, accDiffY, accDiffZ;
-    int           i1, i2, i3, index;
-    unsigned int  d32_1, d32_2;
-    double        compassAngle;
-    char          data[64];
-    char          path[256];
-    char          cmd[1024];
-    char          sensor[2048];
-    char          json_result[2048];
-    unsigned int numReadings = 0;
-
-    le_result_t macReadResult =
-        le_cfg_QuickGetString("bleSensorInterface:/sensorMac", mac, sizeof(mac), "");
+    le_result_t macReadResult = le_cfg_QuickGetString(
+        "bleSensorInterface:/sensorMac", m.deviceMacAddr, sizeof(m.deviceMacAddr), "");
     if (macReadResult != LE_OK)
     {
         LE_FATAL("MAC address stored in configuration tree is too big");
     }
+    else if (strcmp(m.deviceMacAddr, "") == 0)
+    {
+        LE_FATAL("MAC address is not stored in bleSensorInterface:/sensorMac");
+    }
     else
     {
-        LE_INFO("Read Sensortag MAC address (%s) from configTree", mac);
+        // Make sure MAC is uppercase for consistency
+        for (char* c = m.deviceMacAddr; *c != '\0'; c++)
+        {
+            *c = toupper((unsigned char)*c);
+        }
+        LE_INFO("Read Sensortag MAC address (%s) from configTree", m.deviceMacAddr);
     }
 
-    snprintf(
-        cmd,
-        sizeof(cmd),
-        "%s  -b %s --char-write -a 0x24 -n 01;%s  -b %s --char-write -a 0x3c -n ff00; %s  -b %s "
-        "--char-write -a 0x34 -n 01;%s  -b %s --char-write -a 0x44 -n 01;%s  -b %s --char-write "
-        "-a 0x2c -n 01;%s  -b %s --char-write -a 0x50 -n 01;",
-        tool,
-        mac,
-        tool,
-        mac,
-        tool,
-        mac,
-        tool,
-        mac,
-        tool,
-        mac,
-        tool,
-        mac);
-    printf("Running: %s\n", cmd);
-    system(cmd);
+    le_sig_Block(SIGCHLD);
+    le_sig_SetEventHandler(SIGCHLD, sigChldHandler);
 
-    // Initially turn the LEDs and buzzer off
-    snprintf(cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n 00;", tool, mac);
-    PRINT_DEBUG("Init Alarm cmd: %s, all off", cmd);
-    system(cmd);
+    LE_FATAL_IF(initPipes() != 0, "Failed to initialize pipes");
 
-    /* Wait until all sensor RAW data ready to be read */
-    while (flag)
+    pid_t pid = fork();
+    LE_FATAL_IF(pid == -1, "Call to fork() has failed!");
+
+    if (pid == 0)
     {
-        snprintf(
-            cmd,
-            sizeof(cmd),
-            "%s  -b %s --char-read -a 0x21;%s  -b %s --char-read -a 0x39; %s  -b %s --char-read "
-            "-a 0x31;%s -b %s --char-read -a 0x41;%s  -b %s --char-write -a 0x29;",
-            tool,
-            mac,
-            tool,
-            mac,
-            tool,
-            mac,
-            tool,
-            mac,
-            tool,
-            mac);
-
-        PRINT_DEBUG("Running: %s\n", cmd);
-        fp = popen(cmd, "r");
-        if (fp == NULL)
-        {
-            printf("Failed to run command\n");
-            exit(1);
-        }
-
-        /* Read the output a line at a time - output it. */
-        while (fgets(path, sizeof(path) - 1, fp) != NULL)
-        {
-            rawSensorDataStr2Value(path, &len, &p);
-            if (rawValue[0] == 0 && rawValue[1] == 0)
-                break;
-            else
-            {
-                /* Sensor data ready flag */
-                flag = false;
-            }
-        }
-        pclose(fp);
-        sleep(1);
+        childProcess();
     }
-
-
-    printf("\n****** Sensor data available to proccess! ****** \n\n");
-
-    // Start a dataRouter session
-    dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
-    while (1)
+    else
     {
-        const bool publish = (numReadings % 20) == 0;
-        numReadings++;
-        snprintf(json_result, sizeof(json_result), "{");
-        /* IR Temperature Sensor */
-        snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x21", tool, mac);
-        PRINT_DEBUG("Running: %s\n", cmd);
-        fp = popen(cmd, "r");
-        if (fp == NULL)
-        {
-            printf("Failed to run command\n");
-            exit(1);
-        }
-        /* Read the output a line at a time - output it. */
-        while (fgets(path, sizeof(path) - 1, fp) != NULL)
-        {
-            rawSensorDataStr2Value(path, &len, &p);
-            PRINT_DEBUG("len = %d\n", len);
-            for (i = 0; i < len; i++)
-            {
-                PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
-            }
-        }
-        pclose(fp);
-        data1 = rawValue[0] | rawValue[1] << 8;
-        data2 = rawValue[2] | rawValue[3] << 8;
-        sensorTmp007Convert(data1, data2, &value1, &value2);
-        PRINT_DEBUG("IR Temperature = %.2f , Ambient Temperature = %.2f\n", value1, value2);
-        snprintf(
-            data,
-            sizeof(data),
-            "IR Temperature: %.2f\nAmbient Temperature: %.2f\n",
-            value1,
-            value2);
-        writeSensorDataToFile("IR-temperature.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"IRTemperatureSensor\":{\"IR Temperature\":%.2f,\"Ambient Temperature\":%.2f},",
-            json_result,
-            value1,
-            value2);
-        snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishIrTemperatureSensorReading(value1, value2);
-
-        /* Move Sensor */
-        snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x39", tool, mac);
-        PRINT_DEBUG("Running: %s\n", cmd);
-        fp = popen(cmd, "r");
-        if (fp == NULL)
-        {
-            printf("Failed to run command\n");
-            exit(1);
-        }
-        /* Read the output a line at a time - output it. */
-        while (fgets(path, sizeof(path) - 1, fp) != NULL)
-        {
-            rawSensorDataStr2Value(path, &len, &p);
-            PRINT_DEBUG("len = %d\n", len);
-            for (i = 0; i < len; i++)
-            {
-                PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
-            }
-        }
-        pclose(fp);
-        data1 = rawValue[0] | rawValue[1] << 8;
-        data2 = rawValue[2] | rawValue[3] << 8;
-        data3 = rawValue[4] | rawValue[5] << 8;
-        PRINT_DEBUG("Converting Gyro data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
-        value1 = sensorMpu9250GyroConvert(data1);
-        value2 = sensorMpu9250GyroConvert(data2);
-        value3 = sensorMpu9250GyroConvert(data3);
-        PRINT_DEBUG("Gyro X = %.1f/S\n", value1);
-        PRINT_DEBUG("Gyro Y = %.1f/S\n", value2);
-        PRINT_DEBUG("Gyro Z = %.1f/S\n", value3);
-        snprintf(data, sizeof(data), "X=%.1f/S; Y=%.1f/S; Z=%.1f/S", value1, value2, value3);
-        writeSensorDataToFile("Gyro.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"MoveSensor\":{\"Gyroscope\":{\"X\":%.1f,\"Y\":%.1f,\"Z:\":%.1f},",
-            json_result,
-            value1,
-            value2,
-            value3);
-        snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishGyroSensorReading(value1, value2, value3);
-
-        data1 = rawValue[12] | rawValue[13] << 8;
-        data2 = rawValue[14] | rawValue[15] << 8;
-        data3 = rawValue[16] | rawValue[17] << 8;
-        PRINT_DEBUG("Converting Mag data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
-        value1 = sensorMpu9250MagConvert(data1);
-        value2 = sensorMpu9250MagConvert(data2);
-        value3 = sensorMpu9250MagConvert(data3);
-        PRINT_DEBUG("Mag X = %.2f uT\n", value1);
-        PRINT_DEBUG("Mag Y = %.2f uT\n", value2);
-        PRINT_DEBUG("Mag Z = %.2f uT\n", value3);
-        snprintf(data, sizeof(data), "X=%.2fuT; Y=%.2fuT; Z=%.2fuT", value1, value2, value3);
-        writeSensorDataToFile("Mag.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"Magnetometer\":{\"X\":%.1f,\"Y\":%.1f,\"Z:\":%.1f},",
-            json_result,
-            value1,
-            value2,
-            value3);
-        snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishMagnetometerSensorReading(value1, value2, value3);
-
-        /* MagnetoVector = (x,y,0)
-         * Angle = (atan(y/x)/Pi) * 360;
-         */
-        if (value1 == 0.0)
-            compassAngle = 0.0;
-        else
-            compassAngle = (atan(value2 / value1) * 360.0) / 3.14;
-        PRINT_DEBUG("Compass Angle = %.2f\n", compassAngle);
-        snprintf(data, sizeof(data), "%.2f", compassAngle);
-        writeSensorDataToFile("Compass.data", data);
-        snprintf(
-            sensor, sizeof(sensor), "%s\"Compass\":{\"Angle\":%.2f},", json_result, compassAngle);
-        snprintf(json_result, sizeof(json_result), "%s", sensor);
-        if (publish)
-        {
-            publishCompassAngleCalculation(compassAngle);
-        }
-
-        data1 = rawValue[6] | rawValue[7] << 8;
-        data2 = rawValue[8] | rawValue[9] << 8;
-        data3 = rawValue[10] | rawValue[11] << 8;
-        PRINT_DEBUG("Converting Acc data: 0x%2x, 0x%2x, 0x%2x\n", data1, data2, data3);
-        value1 = sensorMpu9250AccConvert(data1);
-        value2 = sensorMpu9250AccConvert(data2);
-        value3 = sensorMpu9250AccConvert(data3);
-        PRINT_DEBUG("Accelerometer X = %.2f g\n", value1);
-        PRINT_DEBUG("Accelerometer Y = %.2f g\n", value2);
-        PRINT_DEBUG("Accelerometer Z = %.2f g\n", value3);
-        snprintf(data, sizeof(data), "X=%.2fg; Y=%.2fg; Z=%.2fg", value1, value2, value3);
-        writeSensorDataToFile("Accelerometer.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"Accelerometer\":{\"X\":%.1f,\"Y\":%.1f,\"Z:\":%.1f},",
-            json_result,
-            value1,
-            value2,
-            value3);
-        snprintf(json_result, sizeof(json_result), "%s", sensor);
-        if (publish)
-        {
-            publishAccelerometerSensorReading(value1, value2, value3);
-        }
-
-        /* Shock:
-         * Like to set an alarm if a shock or rapid acceleration has happened to our sensor
-         *
-         * Compute difference between vectors (SensAcc2 - SensAcc1)
-         * SensAccDiff = (x2-x1, y2-y1, z2-z1) = (dx,dy,dz)
-
-         * Compute vector magnitude
-         * |SensAccDiff| = sqrt(dx^2 + dy^2 + dz^2)
-         * If |SensAccDiff| > SomeMaxValue then set_alarm_flag
-         */
-        accDiffX = value1 - lastValue1;
-        accDiffY = value2 - lastValue2;
-        accDiffZ = value3 - lastValue3;
-        accDiff  = sqrt(accDiffX * accDiffX + accDiffY * accDiffY + accDiffZ * accDiffZ);
-        PRINT_DEBUG(
-            "Last Accelerometer x = %.2f, y = %.2f, z = %.2f\n",
-            lastValue1,
-            lastValue2,
-            lastValue3);
-        PRINT_DEBUG(
-            "Shock = %.2f, dx=%.2f, dy=%.2f, dz=%.2f \n", accDiff, accDiffX, accDiffY, accDiffZ);
-        snprintf(data, sizeof(data), "%.2f", accDiff);
-        writeSensorDataToFile("Shock.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"Shock Movement\":{\"Shock\":%.2f},",
-            json_result,
-            accDiff);
-        snprintf(json_result, sizeof(json_result), "%s", sensor);
-        if (publish)
-        {
-            publishShockCalculation(accDiff);
-        }
-
-        lastValue1 = value1;
-        lastValue2 = value2;
-        lastValue3 = value3;
-
-        i1 = (int)value1;
-        i2 = (int)value2;
-        i3 = (int)value3;
-        if ((i1 == 1) || (i1 == 2))
-        {
-            i1    = 1;
-            index = 1;
-        }
-        else if ((i1 == -1) || (i1 == -2))
-        {
-            i1    = -1;
-            index = 2;
-        }
-        else if ((i2 == 1) || (i2 == 2))
-        {
-            i2    = 1;
-            index = 3;
-        }
-        else if ((i2 == -1) || (i2 == -2))
-        {
-            i2    = -1;
-            index = 4;
-        }
-        else if ((i3 == 1) || (i3 == 2))
-        {
-            i3    = 1;
-            index = 5;
-        }
-        else if ((i3 == -1) || (i3 == -2))
-        {
-            i3    = -1;
-            index = 6;
-        }
-        snprintf(data, sizeof(data), "%d. x=%dg; y=%dg; z=%dg", index, i1, i2, i3);
-        writeSensorDataToFile("Acc-orientation.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"Orientation\":{\"Index\":%d,\"X\":%d,\"Y\":%d,\"Z:\":%d}},",
-            json_result,
-            index,
-            i1,
-            i2,
-            i3);
-        snprintf(json_result, sizeof(json_result), "%s", sensor);
-        if (publish)
-        {
-            publishOrientationCalculation(index);
-        }
-
-        // snprintf(json_result, sizeof(json_result), "%s}\n", sensor);
-        // printf("JSON:\n %s", json_result);
-
-        /* Barometric Pressure sensor: */
-        snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x31", tool, mac);
-        PRINT_DEBUG("Running: %s\n", cmd);
-        fp = popen(cmd, "r");
-        if (fp == NULL)
-        {
-            printf("Failed to run command\n");
-            exit(1);
-        }
-        /* Read the output a line at a time - output it. */
-        while (fgets(path, sizeof(path) - 1, fp) != NULL)
-        {
-            rawSensorDataStr2Value(path, &len, &p);
-            PRINT_DEBUG("len = %d\n", len);
-            for (i = 0; i < len; i++)
-            {
-                PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
-            }
-        }
-        pclose(fp);
-        d32_1  = rawValue[0] | rawValue[1] << 8 | rawValue[2] << 16;
-        d32_2  = rawValue[3] | rawValue[4] << 8 | rawValue[5] << 16;
-        value1 = calcBmp280(d32_1);
-        value2 = calcBmp280(d32_2);
-        PRINT_DEBUG("Pressure Temperature = %.2f , Pressure = %.2f\n", value1, value2);
-        snprintf(
-            data, sizeof(data), "Pressure Temperature: %.2f\nPressure: %.2f\n", value1, value2);
-        writeSensorDataToFile("Pressure.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"BarometricPressureSensor\":{\"Pressure Temperature\":%.2f,\"Pressure\":%.2f},",
-            json_result,
-            value1,
-            value2);
-        snprintf(json_result, sizeof(json_result), "%s", sensor);
-        publishBarometricPressureSensorReading(value1, value2);
-
-        /* Optical sensor: */
-        snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x41", tool, mac);
-        PRINT_DEBUG("Running: %s\n", cmd);
-        fp = popen(cmd, "r");
-        if (fp == NULL)
-        {
-            printf("Failed to run command\n");
-            exit(1);
-        }
-        /* Read the output a line at a time - output it. */
-        while (fgets(path, sizeof(path) - 1, fp) != NULL)
-        {
-            rawSensorDataStr2Value(path, &len, &p);
-            PRINT_DEBUG("len = %d\n", len);
-            for (i = 0; i < len; i++)
-            {
-                PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
-            }
-        }
-        pclose(fp);
-        data1  = rawValue[0] | rawValue[1] << 8;
-        value1 = sensorOpt3001Convert(data1);
-        PRINT_DEBUG("Optical sensor = %.2f\n", value1);
-        snprintf(data, sizeof(data), "Optical sensor: %.2f\n", value1);
-        writeSensorDataToFile("Optical.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"OpticalSensor\":{\"Luminosity\":%.2f},",
-            json_result,
-            value1);
-        snprintf(json_result, sizeof(json_result), "%s\n", sensor);
-        if (publish)
-        {
-            publishOpticalSensorReading(value1);
-        }
-
-        /* Humidity sensor: */
-        snprintf(cmd, sizeof(cmd), "%s  -b %s --char-read -a 0x29", tool, mac);
-        PRINT_DEBUG("Running: %s\n", cmd);
-        fp = popen(cmd, "r");
-        if (fp == NULL)
-        {
-            printf("Failed to run command\n");
-            exit(1);
-        }
-        /* Read the output a line at a time - output it. */
-        while (fgets(path, sizeof(path) - 1, fp) != NULL)
-        {
-            rawSensorDataStr2Value(path, &len, &p);
-            PRINT_DEBUG("len = %d\n", len);
-            for (i = 0; i < len; i++)
-            {
-                PRINT_DEBUG("OUT: %.2x\n", rawValue[i]);
-            }
-        }
-        pclose(fp);
-        data1 = rawValue[0] | rawValue[1] << 8;
-        data2 = rawValue[2] | rawValue[3] << 8;
-        sensorHdc1000Convert(data1, data2, &value1, &value2);
-        PRINT_DEBUG("Humidity sensor temp = %.2f, humidity = %.2f\n", value1, value2);
-        snprintf(
-            data, sizeof(data), "Humidity Temperature: %.2f\n Humidity: %.2f\n", value1, value2);
-        writeSensorDataToFile("Humidity.data", data);
-        snprintf(
-            sensor,
-            sizeof(sensor),
-            "%s\"HumiditySensor\":{\"Temperature\":%.2f,\"Humidity\":%.2f}",
-            json_result,
-            value1,
-            value2);
-        snprintf(json_result, sizeof(json_result), "%s}\n", sensor);
-        if (publish)
-        {
-            publishHumiditySensorReading(value1, value2);
-        }
-
-        printf("%s", json_result);
-        writeSensorDataToFile("sensorTag.json", json_result);
-
-        // Update SensorTag outputs based on dataRouter variables.  Ideally we would be registering
-        // a dataRouter update handler to listen for updates to the appropriate variables, but that
-        // is not possible in this program because of the fact that it is structured in a way that
-        // COMPONENT_INIT never completes.
-        {
-            bool redLedOn;
-            bool greenLedOn;
-            bool buzzerOn;
-            redLedOn = false;
-            greenLedOn = false;
-            buzzerOn = false;
-            // Bits
-            //  0 -> Red LED
-            //  1 -> Green LED
-            //  2 -> Buzzer
-            const uint8_t outputValue =
-            (
-                ((redLedOn ? 1 : 0) << 0) |
-                ((greenLedOn ? 1 : 0) << 1) |
-                ((buzzerOn ? 1 : 0) << 2)
-            );
-            char cmd[256];
-            snprintf(
-                cmd, sizeof(cmd), "%s  -b %s --char-write -a 0x4e -n %02X;", tool, mac, outputValue);
-            system(cmd);
-        }
-        sleep(1);
+        parentProcess();
     }
-    /* close */
-    pclose(fp);
 }
