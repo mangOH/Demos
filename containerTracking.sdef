@@ -27,7 +27,6 @@ apps:
     $LEGATO_WIFI_ROOT/apps/tools/wifi/wifi.adef
 
     $MANGOH_ROOT/apps/GpioExpander/gpioExpanderService/gpioExpanderService.adef
-    $MANGOH_ROOT/apps/GpioExpander/gpioExpanderDemo/gpioExpanderDemo.adef
 
     $MANGOH_ROOT/apps/MuxControl/muxCtrlService/muxCtrlService.adef
     $MANGOH_ROOT/apps/MuxControl/tools/muxCtrlTools.adef
@@ -35,7 +34,6 @@ apps:
     $MANGOH_ROOT/apps/MqttClient/mqttClient.adef
     $MANGOH_ROOT/apps/DataRouter/dataRouter.adef
     $MANGOH_ROOT/apps/DataRouter/drTool/drTool.adef
-    $MANGOH_ROOT/apps/ArduinoBridge/arduinoBridge.adef
     $MANGOH_ROOT/apps/SocialService/socialService.adef
 
     // Command-line tools.
