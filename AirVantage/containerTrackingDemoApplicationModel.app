@@ -8,12 +8,12 @@ fix this problem at a later date.
     xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0"
     type="io.mangoh.demo.container.app"
     name="mangOH Container Demo"
-    revision="2.0.0">
+    revision="3.0.0">
   <capabilities>
     <communication><protocol comm-id="IMEI" type="MQTT" /></communication>
     <data>
       <encoding type="MQTT">
-        <asset default-label="Container" id="container">
+        <asset default-label="Sensors" id="sensors">
           <command default-label="Buzzer" id="buzzer">
             <parameter default-label="Enable" default-value="true" id="enable" type="boolean" />
           </command>
