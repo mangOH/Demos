@@ -10,15 +10,15 @@ demonstration makes use of a SensorTag bluetooth device which integrates a
 number of sensors.  The demo supports alarm generation and pushing logged data
 to AirVantage web services.
 
-### How To Run
-
-#### Prerequisites
+### Prerequisites
 
 * A mangOH Green DV4 board with a WiFi/Bluetooth IoT card installed in IoT slot 0.
 * A Linux kernel with Bluetooth support.  See the [Bluetooth WL18xx driver for mangOH wiki
   page](https://github.com/mangOH/mangOH/wiki/Bluetooth-WL18xx-driver-for-mangOH) for instructions
   on how to build this.
 * A Texas Instruments SensorTag development kit
+
+### How To Run
 
 1. Modify `mangOH/targetDefs.mangoh` to set `export SDEF_TO_USE =
    $(MANGOH_ROOT)/samples/Demos/containerTracking.sdef`
