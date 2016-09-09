@@ -913,16 +913,15 @@ static void configureOpticalSensor(void)
 static void configureMovementSensor(void)
 {
     LE_INFO("Configuring movement sensor - data handle is %d", m.handles.movementSensor.data);
-    const uint8_t period[] = {200}; // n * 10ms
+    //const uint8_t period[] = {200}; // n * 10ms
+    // For some reason the motion sensor doesn't work when the period is set to 200
+    const uint8_t period[] = {0x64}; // n * 10ms
     charWriteCmd(m.handles.movementSensor.period, period, sizeof(period));
-    // Enable gyroscope, accelerometer, magnetometer, enable wake on motion feature and set
-    // accelerometer to 2G range.
-    const uint8_t configuration[] = {0x7F, 0x00}; // Disable wake on motion - report forever
-    //const uint8_t configuration[] = {0xFF, 0x00};
-    charWriteCmd(m.handles.movementSensor.configuration, configuration, sizeof(configuration));
     const uint8_t enableNotifications[] = {0x01, 0x00};
     charWriteCmd(
         m.handles.movementSensor.notification, enableNotifications, sizeof(enableNotifications));
+    const uint8_t configuration[] = {0xFF, 0x00}; // Ensable wake on motion
+    charWriteCmd(m.handles.movementSensor.configuration, configuration, sizeof(configuration));
 }
 
 static void stdinHandler(int fd, short events)
