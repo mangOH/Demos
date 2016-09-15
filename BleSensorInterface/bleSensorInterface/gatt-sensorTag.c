@@ -49,7 +49,7 @@
 #define KEY_RED_LED                     "redLED.enable"
 #define KEY_GREEN_LED                   "greenLED.enable"
 
-#define PUBLISH_PERIOD_IN_MS 30000
+#define PUBLISH_PERIOD_IN_MS 10000
 
 #define PIPE_READ_END_INDEX 0
 #define PIPE_WRITE_END_INDEX 1
