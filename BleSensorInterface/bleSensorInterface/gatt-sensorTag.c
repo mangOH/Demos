@@ -791,7 +791,7 @@ static void notificationLineHandler(const char* line, size_t lineLength)
             notificationSize);
         convertMovementSensorData(
             notificationData,
-            ACC_RANGE_2G,
+            ACC_RANGE_8G,
             &m.sensorReadings.movement.accelerometerInG.x,
             &m.sensorReadings.movement.accelerometerInG.y,
             &m.sensorReadings.movement.accelerometerInG.z,
@@ -931,7 +931,9 @@ static void configureMovementSensor(void)
     const uint8_t enableNotifications[] = {0x01, 0x00};
     charWriteCmd(
         m.handles.movementSensor.notification, enableNotifications, sizeof(enableNotifications));
-    const uint8_t configuration[] = {0xFF, 0x00}; // Ensable wake on motion
+    // Ensable wake on motion and +-8G range.  It seems that it doesn't matter what range setting
+    // is written into the SensorTag and +-8G is always used.
+    const uint8_t configuration[] = {0xFF, 0x02};
     charWriteCmd(m.handles.movementSensor.configuration, configuration, sizeof(configuration));
 }
 
