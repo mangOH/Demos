@@ -9,73 +9,92 @@ the complete path to the variable.
     xmlns:app="http://www.sierrawireless.com/airvantage/application/1.0"
     type="io.mangoh.demo.hackathon.app"
     name="mangOH Hackathon Demo"
-    revision="1.0.1">
+    revision="2.0.0">
   <capabilities>
     <communication><protocol comm-id="IMEI" type="MQTT"/></communication>
     <data>
       <encoding type="MQTT">
-        <asset default-label="Sensors" id="sensors">
-          <node default-label="Bluetooth SensorTag" path="bluetooth">
-            <command default-label="Red SensorTag LED" id="redLed">
-              <parameter default-label="Enable" default-value="true" id="enable" type="boolean"/>
-            </command>
-            <command default-label="Green SensorTag LED" id="greenLed">
-              <parameter default-label="Enable" default-value="true" id="enable" type="boolean"/>
-            </command>
-            <command default-label="SensorTag Buzzer" id="buzzer">
-              <parameter default-label="Enable" default-value="true" id="enable" type="boolean"/>
-            </command>
-            <node default-label="Motion Sensor" path="motion">
-              <node default-label="Accelerometer" path="accelerometer">
-                <variable default-label="SensorTag/Motion/Accelerometer/X" path="x" type="double"/>
-                <variable default-label="SensorTag/Motion/Accelerometer/Y" path="y" type="double"/>
-                <variable default-label="SensorTag/Motion/Accelerometer/Z" path="z" type="double"/>
+        <asset default-label="Application" id="a">
+          <node default-label="Bluetooth SensorTag" path="bt">
+            <node default-label="Commands" path="bluetooth">
+              <command default-label="Buzzer" id="buzzer">
+                <parameter default-label="Enable" default-value="true" id="enable" type="boolean"/>
+              </command>
+              <command default-label="Red LED" id="redLED">
+                <parameter default-label="Enable" default-value="true" id="enable" type="boolean"/>
+              </command>
+              <command default-label="Green LED" id="greenLED">
+                <parameter default-label="Enable" default-value="true" id="enable" type="boolean"/>
+              </command>
+            </node>
+            <node default-label="Alarms" path="alarm">
+              <variable default-label="Alarms/Humidity" path="humidity" type="boolean"/>
+              <variable default-label="Alarms/Luminosity" path="luminosity" type="boolean"/>
+              <variable default-label="Alarms/Orientation" path="orientation" type="boolean"/>
+              <variable default-label="Alarms/Temperature" path="temperature" type="boolean"/>
+              <variable default-label="Alarms/Shock" path="shock" type="double"/>
+            </node>
+            <node default-label="Calculations" path="calc">
+              <variable default-label="Calculations/Compass" path="compass" type="double"/>
+              <variable default-label="Calculations/Shock" path="shock" type="double"/>
+              <variable default-label="Calculations/Orientation" path="orientation" type="int"/>
+            </node>
+            <node default-label="Readings" path="read">
+              <node default-label="Movement" path="movement">
+                <node default-label="Accelerometer" path="accelerometer">
+                  <variable
+                      default-label="Bluetooth/Movement/Accelerometer/X" path="x" type="double"/>
+                  <variable
+                      default-label="Bluetooth/Movement/Accelerometer/Y" path="y" type="double"/>
+                  <variable
+                      default-label="Bluetooth/Movement/Accelerometer/Z" path="z" type="double"/>
+                </node>
+                <node default-label="Magnetometer" path="magnetometer">
+                  <variable
+                      default-label="Bluetooth/Movement/Magnetometer/X" path="x" type="double"/>
+                  <variable
+                      default-label="Bluetooth/Movement/Magnetometer/Y" path="y" type="double"/>
+                  <variable
+                      default-label="Bluetooth/Movement/Magnetometer/Z" path="z" type="double"/>
+                </node>
+                <node default-label="Gyroscope" path="gyroscope">
+                  <variable default-label="Bluetooth/Movement/Gyroscope/X" path="x" type="double"/>
+                  <variable default-label="Bluetooth/Movement/Gyroscope/Y" path="y" type="double"/>
+                  <variable default-label="Bluetooth/Movement/Gyroscope/Z" path="z" type="double"/>
+                </node>
               </node>
-              <node default-label="Gyroscope" path="gyroscope">
-                <variable default-label="SensorTag/Motion/Gyroscope/X" path="x" type="double"/>
-                <variable default-label="SensorTag/Motion/Gyroscope/Y" path="y" type="double"/>
-                <variable default-label="SensorTag/Motion/Gyroscope/Z" path="z" type="double"/>
+              <node default-label="IR Temperature" path="ir">
+                <variable
+                    default-label="Bluetooth/IR/Ambient Temperature"
+                    path="ambientTemperature"
+                    type="double"/>
+                <variable
+                    default-label="Bluetooth/IR/Object Temperature"
+                    path="objectTemperature"
+                    type="double"/>
               </node>
-              <node default-label="Magnetometer" path="magnetometer">
-                <variable default-label="SensorTag/Motion/Magnetometer/X" path="x" type="double"/>
-                <variable default-label="SensorTag/Motion/Magnetometer/Y" path="y" type="double"/>
-                <variable default-label="SensorTag/Motion/Magnetometer/Z" path="z" type="double"/>
+              <node default-label="Humidity" path="humidity">
+                <variable
+                    default-label="Bluetooth/Humidity/Relative Humidity"
+                    path="humidity"
+                    type="double"/>
+                <variable
+                    default-label="Bluetooth/Humidity/Temperature"
+                    path="temperature"
+                    type="double"/>
               </node>
+              <node default-label="Barometric Pressure" path="barometer">
+                <variable
+                    default-label="Bluetooth/Barometric Pressure/Temperature"
+                    path="temperature"
+                    type="double"/>
+                <variable
+                    default-label="Bluetooth/Barometric Pressure/Pressure"
+                    path="pressure"
+                    type="double"/>
+              </node>
+              <variable default-label="Bluetooth/Luminosity" path="luminosity" type="double"/>
             </node>
-            <node default-label="IR Temperature Sensor" path="ir">
-              <variable
-                  default-label="SensorTag/IR/Ambient Temperature"
-                  path="ambientTemperature"
-                  type="double"/>
-              <variable
-                  default-label="SensorTag/IR/Object Temperature"
-                  path="objectTemperature"
-                  type="double"/>
-            </node>
-            <node default-label="Humidity Sensor" path="humidity">
-              <variable
-                  default-label="SensorTag/Humidity/Relative Humidity"
-                  path="humidity"
-                  type="double"/>
-              <variable
-                  default-label="SensorTag/Humidity/Temperature"
-                  path="temperature"
-                  type="double"/>
-            </node>
-            <node default-label="Barometric Pressure Sensor" path="barometer">
-              <variable
-                  default-label="SensorTag/Barometer/Temperature"
-                  path="temperature"
-                  type="double"/>
-              <variable
-                  default-label="SensorTag/Barometer/Barometric Pressure"
-                  path="pressure"
-                  type="double"/>
-            </node>
-            <variable default-label="SensorTag/Luminosity" path="luminosity" type="double"/>
-            <variable default-label="SensorTag/Shock" path="shock" type="double"/>
-            <variable default-label="SensorTag/Orientation" path="orientation" type="int"/>
-            <variable default-label="SensorTag/Compass Angle" path="compass" type="double"/>
           </node>
           <node default-label="Arduino Sensors" path="arduino">
             <variable default-label="Arduino/Temperature" path="temperature" type="double"/>

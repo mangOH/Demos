@@ -13,11 +13,11 @@
 
 
 // Data to publish
-const char* alarmShockKey       = "container.alarms.shock";
-const char* alarmTemperatureKey = "container.alarms.temperature";
-const char* alarmHumidityKey    = "container.alarms.humidity";
-const char* alarmLuminosityKey  = "container.alarms.luminosity";
-const char* alarmOrientationKey = "container.alarms.orientation";
+const char* alarmShockKey       = "a.bt.alarm.shock";
+const char* alarmTemperatureKey = "a.bt.alarm.temperature";
+const char* alarmHumidityKey    = "a.bt.alarm.humidity";
+const char* alarmLuminosityKey  = "a.bt.alarm.luminosity";
+const char* alarmOrientationKey = "a.bt.alarm.orientation";
 
 void checkShockAlarm(double shockValue)
 {

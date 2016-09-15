@@ -28,7 +28,7 @@
 
 #define AV_URL          "" // replace with url of your airvantage accounr
 #define AV_PASSWORD     "" // you can change this here and make it the same as the one on application model
-#define APP_ASSET_ID    "sensors"
+#define APP_ASSET_ID    "a"
 #define APP_TEMPERATURE "arduino.temperature"
 #define APP_HUMIDITY    "arduino.humidity"
 #define APP_LUMINOSITY  "arduino.luminosity"
