@@ -146,7 +146,6 @@ static void waitForHandleMappingsTimeoutHandler(le_timer_Ref_t timer);
 static void publishTimerHandler(le_timer_Ref_t timer);
 static void stdoutLineHandler(const char* line, size_t lineLength);
 static void continueInitialization(void);
-static bool tryParseAttempting(const char* line, size_t lineLength, char* macAddr);
 static bool tryParseNotification(
     const char* line,
     size_t lineLength,
@@ -359,7 +358,9 @@ static void waitForConnectSuccessTimeoutHandler(le_timer_Ref_t timer)
     if (m.programState == STATE_WAIT_FOR_ATTEMPTING ||
         m.programState == STATE_WAIT_FOR_CONNECT_SUCCESS)
     {
-        LE_FATAL("Timed out waiting for connect");
+        LE_ERROR("Failed to connect to Bluetooth device.  Retrying.");
+        m.programState = STATE_BEGIN;
+        continueInitialization();
     }
     else
     {
@@ -508,12 +509,23 @@ static void stdoutLineHandler(const char* line, size_t lineLength)
     {
         case STATE_WAIT_FOR_ATTEMPTING:
         {
-            char macAddr[18];
-            LE_FATAL_IF(
-                !tryParseAttempting(line, lineLength, macAddr),
-                "Received unexpected output while trying to connect (%s)",
-                line);
-            m.programState = STATE_WAIT_FOR_CONNECT_SUCCESS;
+            const char attempting[] = "Attempting to connect to ";
+            if (strncmp(line, attempting, sizeof(attempting) - 1) == 0)
+            {
+                m.programState = STATE_WAIT_FOR_CONNECT_SUCCESS;
+            }
+            else if (strcmp(line, "Connection successful") == 0)
+            {
+                // Sometimes the "Attempting to connect to <MAC>" message never appears, so handle
+                // the case of "Connection successful" in this state as well.
+                le_timer_Stop(m.initialization.commandResponseTimer);
+                m.programState = STATE_HANDLE_LOOKUP_BEGIN;
+                continueInitialization();
+            }
+            else
+            {
+                LE_FATAL("Received unexpected output while trying to connect (%s)", line);
+            }
             break;
         }
 
@@ -596,12 +608,16 @@ static void continueInitialization(void)
     {
         case STATE_BEGIN:
         {
-            m.initialization.commandResponseTimer =
-                le_timer_Create("gatttool command response timer");
-            LE_ASSERT_OK(le_timer_SetMsInterval(m.initialization.commandResponseTimer, 3000));
-            LE_ASSERT_OK(
-                le_timer_SetHandler(
-                    m.initialization.commandResponseTimer, waitForConnectSuccessTimeoutHandler));
+            if (m.initialization.commandResponseTimer == NULL)
+            {
+                m.initialization.commandResponseTimer =
+                    le_timer_Create("gatttool command response timer");
+                LE_ASSERT_OK(le_timer_SetMsInterval(m.initialization.commandResponseTimer, 3000));
+                LE_ASSERT_OK(
+                    le_timer_SetHandler(
+                        m.initialization.commandResponseTimer,
+                        waitForConnectSuccessTimeoutHandler));
+            }
             LE_ASSERT_OK(le_timer_Start(m.initialization.commandResponseTimer));
             sendCommand("connect");
             m.programState = STATE_WAIT_FOR_ATTEMPTING;
@@ -654,11 +670,6 @@ static void continueInitialization(void)
     }
 }
 
-// TODO: better checking on macAddr length
-static bool tryParseAttempting(const char* line, size_t lineLength, char* macAddr)
-{
-    return sscanf(line, "Attempting to connect to %s", macAddr) == 1;
-}
 
 static bool tryParseNotification
 (
@@ -1153,6 +1164,9 @@ static void parentProcess(void)
 
     dataRouter_SessionStart("eu.airvantage.net", "SWI", true, DATAROUTER_CACHE);
 
+    // Initialize the commandResponseTimer to NULL so that the STATE_BEGIN handling in
+    // continueInitialization() can distinguish between a fresh start and a connect retry.
+    m.initialization.commandResponseTimer = NULL;
     m.programState = STATE_BEGIN;
     continueInitialization();
 }
