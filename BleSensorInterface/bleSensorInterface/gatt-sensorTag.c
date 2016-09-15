@@ -1200,7 +1200,7 @@ static void logData
 
 static bool approxEq(float v1, float v2, float threshold)
 {
-    return (abs(v1 - v2) < threshold);
+    return (fabsf(v1 - v2) < threshold);
 }
 
 static void performSensorCalculation(
@@ -1227,7 +1227,7 @@ static void performSensorCalculation(
     calculation->shock = sqrt((deltaX * deltaX) + (deltaY * deltaY) + (deltaZ * deltaZ));
 
     // Orientation
-    float allowableError = 0.2;
+    float allowableError = 0.3;
     if (approxEq(currentReading->movement.accelerometerInG.x, 1.0, allowableError) &&
         approxEq(currentReading->movement.accelerometerInG.y, 0.0, allowableError) &&
         approxEq(currentReading->movement.accelerometerInG.z, 0.0, allowableError))
