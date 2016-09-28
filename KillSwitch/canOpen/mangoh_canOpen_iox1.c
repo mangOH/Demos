@@ -1,4 +1,5 @@
 #include "legato.h"
+#include "interfaces.h"
 #include "can_defs.h"
 #include "cop_api.h"
 #include "cop_tcp.h"
@@ -121,4 +122,23 @@ static unsigned char genericDigitalInput(const char* cmd)
 
 COMPONENT_INIT
 {
+    LE_FATAL_IF(mangoh_muxCtrl_Iot1Spi1On() != LE_OK, "Couldn't eanble SPI on IoT slot 1");
+    LE_FATAL_IF(
+        mangoh_muxCtrl_IotSlot1DeassertReset() != LE_OK, "Couldn't take IoT slot 1 out of reset");
+    // Run the can-init.sh before advertising the service to ensure that the CAN device is
+    // available before we allow it to be used.
+    char line[256];
+    FILE* fp = popen("can-init.sh 2>&1", "r");
+    LE_ASSERT(fp != NULL);
+    while (fgets(line, sizeof(line), fp) != NULL)
+    {
+        LE_INFO("can-init.sh output: %s", line);
+    }
+    int canInitResult = pclose(fp);
+    LE_FATAL_IF(!WIFEXITED(canInitResult), "Could not run can-init.sh");
+    const int canInitExitCode = WEXITSTATUS(canInitResult);
+    LE_FATAL_IF(canInitExitCode != 0, "can-init.sh failed with exit code %d", canInitExitCode);
+
+
+    mangoh_canOpenIox1_AdvertiseService();
 }

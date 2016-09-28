@@ -208,6 +208,7 @@ static void powerUpdateHandler(
 
 COMPONENT_INIT
 {
+    mangoh_canOpenIox1_ConnectService();
     dataRouter_SessionStart("eu.airvantage.net", "SwiBridge", true, DATAROUTER_CACHE);
     LE_FATAL_IF(mangoh_canOpenIox1_Init() != LE_OK, "Couldn't initialize CAN");
 

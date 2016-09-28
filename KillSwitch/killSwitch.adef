@@ -1,5 +1,5 @@
-sandboxed: true
-start: manual
+sandboxed: false
+start: auto
 
 executables:
 {
@@ -22,7 +22,7 @@ bundles:
 {
     file:
     {
-        [x] script/can-init.sh /bin/
+        [rx] script/can-init.sh /bin/
     }
 }
 
@@ -30,5 +30,6 @@ bindings:
 {
     killSwitch.killSwitch.dataRouter -> dataRouter.dataRouter
     killSwitch.killSwitch.mangoh_canOpenIox1 -> canOpen.canOpen.mangoh_canOpenIox1
+    canOpen.canOpen.mangoh_muxCtrl -> muxCtrlService.mangoh_muxCtrl
 }
 
