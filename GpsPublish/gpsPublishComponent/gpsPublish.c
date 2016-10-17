@@ -1,8 +1,12 @@
-//--------------------------------------------------------------------------------------------------
-/** @file
+/**
+ * @file
+ *
  * This app reads the current gps location every 60 seconds and sends it to the data router.
+ *
+ * <HR>
+ *
+ * Copyright (C) Sierra Wireless, Inc. Use of this work is subject to license.
  */
-//--------------------------------------------------------------------------------------------------
 
 #include "legato.h"
 #include "interfaces.h"
