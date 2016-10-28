@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        le_sensorGpio = ${LEGATO_ROOT}/interfaces/le_gpio.api
+        ${MANGOH_ROOT}/apps/DataRouter/dataRouter.api
+    }
+}
+
+sources:
+{
+    doorSensor.c
+}

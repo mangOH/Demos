@@ -12,25 +12,47 @@
 #include <string>
 #include <sstream>
 
-#define KEY_BT_IR_TEMPERATURE_AMBIENT      "sensors.bluetooth.ir.ambientTemperature"
-#define KEY_BT_IR_TEMPERATURE_IR           "sensors.bluetooth.ir.objectTemperature"
-#define KEY_BT_MOVEMENT_GYRO_X             "sensors.bluetooth.motion.gyroscope.x"
-#define KEY_BT_MOVEMENT_GYRO_Y             "sensors.bluetooth.motion.gyroscope.y"
-#define KEY_BT_MOVEMENT_GYRO_Z             "sensors.bluetooth.motion.gyroscope.z"
-#define KEY_BT_MOVEMENT_MAGNETOMETER_X     "sensors.bluetooth.motion.magnetometer.x"
-#define KEY_BT_MOVEMENT_MAGNETOMETER_Y     "sensors.bluetooth.motion.magnetometer.y"
-#define KEY_BT_MOVEMENT_MAGNETOMETER_Z     "sensors.bluetooth.motion.magnetometer.z"
-#define KEY_BT_MOVEMENT_ACCELEROMETER_X    "sensors.bluetooth.motion.accelerometer.x"
-#define KEY_BT_MOVEMENT_ACCELEROMETER_Y    "sensors.bluetooth.motion.accelerometer.y"
-#define KEY_BT_MOVEMENT_ACCELEROMETER_Z    "sensors.bluetooth.motion.accelerometer.z"
-#define KEY_BT_BAROMETR_TEMPERATURE        "sensors.bluetooth.barometer.temperature"
-#define KEY_BT_BAROMETR_PRESSURE           "sensors.bluetooth.barometer.pressure"
-#define KEY_BT_OPTICAL_LUMINOSITY          "sensors.bluetooth.luminosity"
-#define KEY_BT_HUMIDITY_SENSOR_TEMPERATURE "sensors.bluetooth.humidity.temperature"
-#define KEY_BT_HUMIDITY_SENSOR_HUMIDITY    "sensors.bluetooth.humidity.humidity"
-#define KEY_BT_SHOCK                       "sensors.bluetooth.shock"
-#define KEY_BT_ORIENTATION                 "sensors.bluetooth.orientation"
-#define KEY_BT_COMPASS                     "sensors.bluetooth.compass"
+#define BOAT_DEMO
+
+#ifdef BOAT_DEMO
+
+#define KEY_BAROMETER_PRESSURE              "a.bt.read.barometer.pressure"
+#define KEY_HUMIDITY_TEMPERATURE           "a.bt.read.humidity.temperature"
+#define KEY_HUMIDITY_HUMIDITY              "a.bt.read.humidity.humidity"
+#define KEY_BUZZER                         "buzzer.enable"
+#define KEY_RED_LED                        "redLED.enable"
+#define KEY_GREEN_LED                      "greenLED.enable"
+
+#define KEY_BATTERY_READING                "a.wr.read.battery"
+#define KEY_BILGE_STATE                    "a.wr.read.water"
+#define KEY_DOCK_POWER                     "a.wr.read.power"
+#define KEY_DOOR_STATE                     "a.wr.read.door"
+#define KEY_MOTION_DETECT                  "a.wr.read.motion"
+
+#define KEY_GPS_LATITUDE                   "a.gps.location.latitude"
+#define KEY_GPS_LONGITUDE                  "a.gps.location.longitude"
+
+#else
+
+#define KEY_BT_IR_TEMPERATURE_AMBIENT      "a.bt.read.ir.ambientTemperature"
+#define KEY_BT_IR_TEMPERATURE_IR           "a.bt.read.ir.objectTemperature"
+#define KEY_BT_MOVEMENT_GYRO_X             "a.bt.read.motion.gyroscope.x"
+#define KEY_BT_MOVEMENT_GYRO_Y             "a.bt.read.motion.gyroscope.y"
+#define KEY_BT_MOVEMENT_GYRO_Z             "a.bt.read.motion.gyroscope.z"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_X     "a.bt.read.motion.magnetometer.x"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_Y     "a.bt.read.motion.magnetometer.y"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_Z     "a.bt.read.motion.magnetometer.z"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_X    "a.bt.read.motion.accelerometer.x"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_Y    "a.bt.read.motion.accelerometer.y"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_Z    "a.bt.read.motion.accelerometer.z"
+#define KEY_BT_BAROMETR_TEMPERATURE        "a.bt.read.barometer.temperature"
+#define KEY_BT_BAROMETR_PRESSURE           "a.bt.read.barometer.pressure"
+#define KEY_BT_OPTICAL_LUMINOSITY          "a.bt.read.luminosity"
+#define KEY_BT_HUMIDITY_SENSOR_TEMPERATURE "a.bt.read.humidity.temperature"
+#define KEY_BT_HUMIDITY_SENSOR_HUMIDITY    "a.bt.read.humidity.humidity"
+#define KEY_BT_SHOCK                       "a.bt.read.shock"
+#define KEY_BT_ORIENTATION                 "a.bt.read.orientation"
+#define KEY_BT_COMPASS                     "a.bt.read.compass"
 
 #define KEY_ARDUINO_TEMPERATURE            "sensors.arduino.temperature"
 #define KEY_ARDUINO_HUMIDITY               "sensors.arduino.humidity"
@@ -43,6 +65,8 @@
 #define KEY_GPS_LATITUDE                   "sensors.mangoh.gps.latitude"
 #define KEY_GPS_LONGITUDE                  "sensors.mangoh.gps.longitude"
 
+
+#endif   // BOAT_DEMO
 
 #define CFG_KEY_MQTT_HOST     "mqttBrokerHost"
 #define CFG_KEY_MQTT_PORT     "mqttBrokerPort"
@@ -80,14 +104,31 @@ private:
 
 // NOTE: commented out some values due to IPC limitations
 static const char* pushKeys[] = {
-    //KEY_BT_IR_TEMPERATURE_AMBIENT,
-    //KEY_BT_IR_TEMPERATURE_IR,
+#ifdef BOAT_DEMO
+    KEY_BAROMETER_PRESSURE,
+    KEY_HUMIDITY_TEMPERATURE,
+    KEY_HUMIDITY_HUMIDITY,
+    KEY_BUZZER,
+    KEY_RED_LED,
+    KEY_GREEN_LED,
+
+    KEY_BATTERY_READING,
+    KEY_BILGE_STATE,
+    KEY_DOCK_POWER,
+    KEY_DOOR_STATE,
+    KEY_MOTION_DETECT,
+
+    KEY_GPS_LATITUDE,
+    KEY_GPS_LONGITUDE,
+#else
+    KEY_BT_IR_TEMPERATURE_AMBIENT,
+    KEY_BT_IR_TEMPERATURE_IR,
     KEY_BT_MOVEMENT_GYRO_X,
     KEY_BT_MOVEMENT_GYRO_Y,
     KEY_BT_MOVEMENT_GYRO_Z,
-    //KEY_BT_MOVEMENT_MAGNETOMETER_X,
-    //KEY_BT_MOVEMENT_MAGNETOMETER_Y,
-    //KEY_BT_MOVEMENT_MAGNETOMETER_Z,
+    KEY_BT_MOVEMENT_MAGNETOMETER_X,
+    KEY_BT_MOVEMENT_MAGNETOMETER_Y,
+    KEY_BT_MOVEMENT_MAGNETOMETER_Z,
     KEY_BT_MOVEMENT_ACCELEROMETER_X,
     KEY_BT_MOVEMENT_ACCELEROMETER_Y,
     KEY_BT_MOVEMENT_ACCELEROMETER_Z,
@@ -98,7 +139,7 @@ static const char* pushKeys[] = {
     KEY_BT_HUMIDITY_SENSOR_HUMIDITY,
     KEY_BT_SHOCK,
     KEY_BT_ORIENTATION,
-    //KEY_BT_COMPASS,
+    KEY_BT_COMPASS,
     KEY_ARDUINO_TEMPERATURE,
     KEY_ARDUINO_HUMIDITY,
     KEY_ARDUINO_LUMINOSITY,
@@ -108,6 +149,7 @@ static const char* pushKeys[] = {
     KEY_ARDUINO_OXYGEN,
     KEY_GPS_LATITUDE,
     KEY_GPS_LONGITUDE,
+#endif // BOAT_DEMO
 };
 
 static struct

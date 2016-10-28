@@ -29,11 +29,11 @@
 //--------------------------------------------------------------------------------------------------
 #define GPS_RETRY_PERIOD_IN_SECONDS (59)
 
-#define KEY_GPS_LATITUDE      "sensors.mangoh.gps.latitude"
-#define KEY_GPS_LONGITUDE     "sensors.mangoh.gps.longitude"
+#define KEY_GPS_LATITUDE      "a.gps.location.latitude"
+#define KEY_GPS_LONGITUDE     "a.gps.location.longitude"
 
-static const int32_t PINNACLE_HOTEL_LONGITUDE = -123120900;
-static const int32_t PINNACLE_HOTEL_LATITUDE = 4928790;
+static const int32_t DEFAULT_LONGITUDE = -123120900;
+static const int32_t DEFAULT_LATITUDE = 4928790;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -103,7 +103,7 @@ static le_result_t GetCurrentLocation
  *      If the location cannot be determined, a hard-coded location will be published.
  */
 //--------------------------------------------------------------------------------------------------
-static void gpsTimer
+static void GpsTimer
 (
     le_timer_Ref_t gpsTimerRef
 )
@@ -120,8 +120,8 @@ static void gpsTimer
     }
     else
     {
-        latitude = PINNACLE_HOTEL_LATITUDE;
-        longitude = PINNACLE_HOTEL_LONGITUDE;
+        latitude = DEFAULT_LATITUDE;
+        longitude = DEFAULT_LONGITUDE;
         LE_INFO(
             "Couldn't get GPS location.  Publishing Pinnacle Hotel location: %d, %d",
             latitude,
@@ -137,13 +137,13 @@ COMPONENT_INIT
     dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
 
     le_clk_Time_t  timerInterval = {.sec = GPS_SAMPLE_INTERVAL_IN_SECONDS, .usec = 0};
-    le_timer_Ref_t gpsTimerRef;
-    gpsTimerRef = le_timer_Create("GPS Timer");
+    le_timer_Ref_t gpsTimerRef = le_timer_Create("GPS Timer");
+
     le_timer_SetInterval(gpsTimerRef, timerInterval);
     le_timer_SetRepeat(gpsTimerRef, 0);
-    le_timer_SetHandler(gpsTimerRef, gpsTimer);
+    le_timer_SetHandler(gpsTimerRef, GpsTimer);
     // Explicitly call the timer handler so that the app publishes a GPS location immediately
     // instead of waiting for the first timer expiry to occur.
-    gpsTimer(gpsTimerRef);
+    GpsTimer(gpsTimerRef);
     le_timer_Start(gpsTimerRef);
 }

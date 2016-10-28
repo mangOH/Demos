@@ -1,0 +1,51 @@
+sandboxed: true
+version: 1.0.0
+maxFileSystemBytes: 512K
+start: manual
+
+
+executables:
+{
+    batteryReading = ( batteryReadingComponent )
+    bilgeWater     = ( bilgeWaterComponent ) 
+    dockPower      = ( dockPowerComponent )    
+    doorSensor     = ( doorSensorComponent )
+    motionDetect   = ( motionDetectComponent )  
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+    run:
+    {
+        ( batteryReading )
+        ( bilgeWater )       
+        ( dockPower )
+        ( doorSensor ) 
+        ( motionDetect )
+    }
+    faultAction: restart
+}
+
+bindings:
+{
+    batteryReading.batteryReadingComponent.le_adc -> modemService.le_adc
+    batteryReading.batteryReadingComponent.dataRouter -> dataRouter.dataRouter
+    
+    bilgeWater.bilgeWaterComponent.le_sensorGpio -> <root>.le_gpioPin7
+    bilgeWater.bilgeWaterComponent.dataRouter -> dataRouter.dataRouter  
+
+    dockPower.dockPowerComponent.le_sensorGpio -> <root>.le_gpioPin32
+    dockPower.dockPowerComponent.dataRouter -> dataRouter.dataRouter 
+ 
+    doorSensor.doorSensorComponent.le_sensorGpio -> <root>.le_gpioPin25     
+    doorSensor.doorSensorComponent.dataRouter -> dataRouter.dataRouter
+
+
+    motionDetect.motionDetectComponent.le_adc -> modemService.le_adc
+    motionDetect.motionDetectComponent.dataRouter -> dataRouter.dataRouter 
+
+}

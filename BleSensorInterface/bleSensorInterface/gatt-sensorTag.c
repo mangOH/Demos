@@ -1172,7 +1172,7 @@ static void parentProcess(void)
         stderrHandler,
         POLLIN | POLLHUP);
 
-    dataRouter_SessionStart("eu.airvantage.net", "SWI", true, DATAROUTER_CACHE);
+    dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
 
     // Initialize the commandResponseTimer to NULL so that the STATE_BEGIN handling in
     // continueInitialization() can distinguish between a fresh start and a connect retry.

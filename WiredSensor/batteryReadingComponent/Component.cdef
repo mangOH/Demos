@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        ${LEGATO_ROOT}/interfaces/modemServices/le_adc.api
+        ${MANGOH_ROOT}/apps/DataRouter/dataRouter.api
+    }
+}
+
+sources:
+{
+    batteryReading.c
+}
