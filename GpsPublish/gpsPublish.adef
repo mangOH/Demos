@@ -1,7 +1,7 @@
 sandboxed: true
 version: 1.0.0
 maxFileSystemBytes: 512K
-start: manual
+start: auto
 
 executables:
 {
