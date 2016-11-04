@@ -76,12 +76,12 @@
 class DataValue
 {
 public:
+    DataValue(void);
     explicit DataValue(bool b);
     explicit DataValue(int32_t i);
     explicit DataValue(double f);
     explicit DataValue(const std::string& s);
-    ~DataValue(void);
-    DataValue(const DataValue& other);
+    DataValue& operator=(const DataValue& other);
     std::string encodeAsJSON(void) const;
 
 private:
@@ -206,7 +206,7 @@ static void dataRouterUpdateHandler
             bool b;
             dataRouter_ReadBoolean(key, &b, &timestamp);
             DataValue value(b);
-            globals.data.insert(std::make_pair(keyStr, value));
+            globals.data[keyStr] = value;
             break;
         }
 
@@ -215,7 +215,7 @@ static void dataRouterUpdateHandler
             int32_t i;
             dataRouter_ReadInteger(key, &i, &timestamp);
             DataValue value(i);
-            globals.data.insert(std::make_pair(keyStr, value));
+            globals.data[keyStr] = value;
             break;
         }
 
@@ -224,7 +224,7 @@ static void dataRouterUpdateHandler
             double d;
             dataRouter_ReadFloat(key, &d, &timestamp);
             DataValue value(d);
-            globals.data.insert(std::make_pair(keyStr, value));
+            globals.data[keyStr] = value;
             break;
         }
 
@@ -234,7 +234,7 @@ static void dataRouterUpdateHandler
             dataRouter_ReadString(key, buffer, NUM_ARRAY_MEMBERS(buffer), &timestamp);
             std::string s(buffer);
             DataValue value(s);
-            globals.data.insert(std::make_pair(keyStr, value));
+            globals.data[keyStr] = value;
             break;
         }
 
@@ -309,6 +309,10 @@ static void mqttSessionStateHandler
     }
 }
 
+DataValue::DataValue(void)
+{
+}
+
 DataValue::DataValue(bool b)
     : type(DATAROUTER_BOOLEAN), value(b)
 {
@@ -329,14 +333,11 @@ DataValue::DataValue(const std::string& s)
 {
 }
 
-DataValue::DataValue(const DataValue& other)
-    : type(other.type)
+DataValue& DataValue::operator=(const DataValue& other)
 {
+    this->type = other.type;
     memcpy(&this->value, &other.value, sizeof(this->value));
-}
-
-DataValue::~DataValue(void)
-{
+    return *this;
 }
 
 std::string DataValue::encodeAsJSON(void) const
