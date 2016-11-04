@@ -57,6 +57,8 @@ COMPONENT_INIT
 
     ConfigureSensorGpio();
 
+    // Fake a transition immediately to publish the current value
+    touch_ledGpio_ChangeHandler(le_sensorGpio_Read(), NULL);
     le_sensorGpio_AddChangeEventHandler(LE_SENSORGPIO_EDGE_BOTH,
                                         touch_ledGpio_ChangeHandler,
                                         NULL,
