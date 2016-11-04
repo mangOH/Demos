@@ -46,7 +46,7 @@ static void AdcTimer
         }
 
         batteryRead =(((double)(int32_t)value/1600)*100);
-        
+
         const int32_t now = time(NULL);
         dataRouter_WriteFloat(KEY_BATTERY_READING, batteryRead, now);
 
@@ -65,7 +65,7 @@ static void AdcTimer
 COMPONENT_INIT
 {
     LE_INFO("---------------------- Battery Reading started");
-    
+
     dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
 
     le_timer_Ref_t adcTimerRef = le_timer_Create("ADC Timer");

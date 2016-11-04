@@ -30,10 +30,10 @@ static void ConfigureSensorGpio
 
 //--------------------------------------------------------------------------------------------------
 /**
- * LED D750 changes state when IoT1_GPIO3 changes state
+ * Dock power sensor change handler
  */
 //--------------------------------------------------------------------------------------------------
-static  void touch_ledGpio_ChangeHandler
+static  void DockPowerSensorChangeHandler
 (
     bool state,
     void *ctx
@@ -41,7 +41,6 @@ static  void touch_ledGpio_ChangeHandler
 {
     const int32_t now = time(NULL);
     dataRouter_WriteBoolean(KEY_DOCK_POWER, state, now);
-
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -52,15 +51,15 @@ static  void touch_ledGpio_ChangeHandler
 COMPONENT_INIT
 {
     LE_INFO("=============== Dock Power application has started");
-    
+
     dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
 
     ConfigureSensorGpio();
 
     // Fake a transition immediately to publish the current value
-    touch_ledGpio_ChangeHandler(le_sensorGpio_Read(), NULL);
+    DockPowerSensorChangeHandler(le_sensorGpio_Read(), NULL);
     le_sensorGpio_AddChangeEventHandler(LE_SENSORGPIO_EDGE_BOTH,
-                                        touch_ledGpio_ChangeHandler,
+                                        DockPowerSensorChangeHandler,
                                         NULL,
                                         0);
 }

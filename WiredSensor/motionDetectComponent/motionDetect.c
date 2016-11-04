@@ -66,7 +66,7 @@ static void AdcTimer
 COMPONENT_INIT
 {
     LE_INFO("---------------------- Motion Reading started");
-    
+
     dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
 
     le_timer_Ref_t adcTimerRef = le_timer_Create("ADC Timer");

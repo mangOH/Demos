@@ -32,10 +32,10 @@ static void ConfigureSensorGpio
 
 //--------------------------------------------------------------------------------------------------
 /**
- * LED D750 changes state when IoT1_GPIO1 changes state
+ * Door sensor change handler
  */
 //--------------------------------------------------------------------------------------------------
-static  void touch_ledGpio_ChangeHandler
+static  void DoorSensorChangeHandler
 (
     bool state,
     void *ctx
@@ -54,15 +54,15 @@ static  void touch_ledGpio_ChangeHandler
 COMPONENT_INIT
 {
     LE_INFO("=============== Door sensor application has started");
-    
+
     dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
 
     ConfigureSensorGpio();
 
     // Fake a transition immediately to publish the current value
-    touch_ledGpio_ChangeHandler(le_sensorGpio_Read(), NULL);
+    DoorSensorChangeHandler(le_sensorGpio_Read(), NULL);
     le_sensorGpio_AddChangeEventHandler(LE_SENSORGPIO_EDGE_BOTH,
-                                        touch_ledGpio_ChangeHandler,
+                                        DoorSensorChangeHandler,
                                         NULL,
                                         0);
 }
