@@ -20,6 +20,9 @@ static void ConfigureSensorGpio
     void
 )
 {
+    LE_FATAL_IF(le_sensorGpio_EnablePullDown() != LE_OK,
+                "Couldn't configure gpio for dock power as pull down");
+
     // Configure IoT1_GPIO2 as input and set its initial value as high
     LE_FATAL_IF(le_sensorGpio_SetInput(LE_SENSORGPIO_ACTIVE_HIGH) != LE_OK,
                 "Couldn't configure cf3 gpio as default input high");
