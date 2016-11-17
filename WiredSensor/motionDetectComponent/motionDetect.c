@@ -13,7 +13,7 @@
  * @note Please change this timeout value as needed.
  */
 //--------------------------------------------------------------------------------------------------
-#define ADC_SAMPLE_INTERVAL_IN_MILLISECONDS (1000)
+#define ADC_SAMPLE_INTERVAL_IN_MILLISECONDS (4000)
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -35,11 +35,11 @@ static void AdcTimer
     int32_t value;
     int8_t detect;
 
-    const le_result_t result = le_adc_ReadValue("EXT_ADC0", &value);
+    const le_result_t result = le_adc_ReadValue("EXT_ADC2", &value);
 
     if (result == LE_OK)
     {
-        LE_INFO("EXT_ADC0 value is: %d", value);
+        LE_INFO("EXT_ADC2 value is: %d", value);
         if (value > 700)
         {
             detect = true;
