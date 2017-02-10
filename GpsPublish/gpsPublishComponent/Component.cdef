@@ -4,6 +4,7 @@ requires:
     {
         positioning/le_posCtrl.api
         positioning/le_pos.api
+        le_cfg.api
         ${MANGOH_ROOT}/apps/DataRouter/dataRouter.api
     }
 }

@@ -32,9 +32,16 @@
 #define KEY_GPS_LATITUDE      "a.gps.location.latitude"
 #define KEY_GPS_LONGITUDE     "a.gps.location.longitude"
 
-static const int32_t DEFAULT_LONGITUDE = -123120900;
-static const int32_t DEFAULT_LATITUDE = 4928790;
+#define CFG_KEY_DEFAULT_LATITUDE "defaultLatitude"
+#define CFG_KEY_DEFAULT_LONGITUDE "defaultLongitude"
 
+//#define USE_REAL_GPS_LOCATION
+
+static int32_t DefaultLatitude = 4928790;
+static int32_t DefaultLongitude = -123120900;
+
+
+#ifdef USE_REAL_GPS_LOCATION
 //--------------------------------------------------------------------------------------------------
 /**
  * Attempts to use the GPS to find the current latitude, longitude and horizontal accuracy within
@@ -94,6 +101,7 @@ static le_result_t GetCurrentLocation
 
     return result;
 }
+#endif // USE_REAL_GPS_LOCATION
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -110,8 +118,9 @@ static void GpsTimer
 {
     int32_t latitude;
     int32_t longitude;
-    int32_t horizontalAccuracy;
 
+#ifdef USE_REAL_GPS_LOCATION
+    int32_t horizontalAccuracy;
     const le_result_t result = GetCurrentLocation(
         &latitude, &longitude, &horizontalAccuracy, GPS_RETRY_PERIOD_IN_SECONDS);
     if (result == LE_OK)
@@ -120,13 +129,17 @@ static void GpsTimer
     }
     else
     {
-        latitude = DEFAULT_LATITUDE;
-        longitude = DEFAULT_LONGITUDE;
+        latitude = DefaultLatitude;
+        longitude = DefaultLongitude;
         LE_INFO(
-            "Couldn't get GPS location.  Publishing Pinnacle Hotel location: %d, %d",
+            "Couldn't get GPS location.  Publishing default location: %d, %d",
             latitude,
             longitude);
     }
+#else
+    latitude = DefaultLatitude;
+    longitude = DefaultLongitude;
+#endif // USE_REAL_GPS_LOCATION
     const int32_t now = time(NULL);
     dataRouter_WriteInteger(KEY_GPS_LATITUDE, latitude, now);
     dataRouter_WriteInteger(KEY_GPS_LONGITUDE, longitude, now);
@@ -134,6 +147,16 @@ static void GpsTimer
 
 COMPONENT_INIT
 {
+    // Try to read default location from config tree
+    le_cfg_IteratorRef_t cfgIter = le_cfg_CreateReadTxn("");
+    if (le_cfg_GetNodeType(cfgIter, CFG_KEY_DEFAULT_LATITUDE) == LE_CFG_TYPE_INT &&
+        le_cfg_GetNodeType(cfgIter, CFG_KEY_DEFAULT_LONGITUDE) == LE_CFG_TYPE_INT)
+    {
+        DefaultLatitude = le_cfg_GetInt(cfgIter, CFG_KEY_DEFAULT_LATITUDE, 0);
+        DefaultLongitude = le_cfg_GetInt(cfgIter, CFG_KEY_DEFAULT_LONGITUDE, 0);
+    }
+    le_cfg_CancelTxn(cfgIter);
+
     dataRouter_SessionStart("", "", false, DATAROUTER_CACHE);
 
     le_clk_Time_t  timerInterval = {.sec = GPS_SAMPLE_INTERVAL_IN_SECONDS, .usec = 0};
