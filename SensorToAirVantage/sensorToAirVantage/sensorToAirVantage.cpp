@@ -16,7 +16,7 @@
 
 #ifdef BOAT_DEMO
 
-#define KEY_BAROMETER_PRESSURE              "a.bt.read.barometer.pressure"
+#define KEY_BAROMETER_PRESSURE             "a.bt.read.barometer.pressure"
 #define KEY_HUMIDITY_TEMPERATURE           "a.bt.read.humidity.temperature"
 #define KEY_HUMIDITY_HUMIDITY              "a.bt.read.humidity.humidity"
 #define KEY_BUZZER                         "buzzer.enable"
@@ -36,15 +36,15 @@
 
 #define KEY_BT_IR_TEMPERATURE_AMBIENT      "a.bt.read.ir.ambientTemperature"
 #define KEY_BT_IR_TEMPERATURE_IR           "a.bt.read.ir.objectTemperature"
-#define KEY_BT_MOVEMENT_GYRO_X             "a.bt.read.motion.gyroscope.x"
-#define KEY_BT_MOVEMENT_GYRO_Y             "a.bt.read.motion.gyroscope.y"
-#define KEY_BT_MOVEMENT_GYRO_Z             "a.bt.read.motion.gyroscope.z"
-#define KEY_BT_MOVEMENT_MAGNETOMETER_X     "a.bt.read.motion.magnetometer.x"
-#define KEY_BT_MOVEMENT_MAGNETOMETER_Y     "a.bt.read.motion.magnetometer.y"
-#define KEY_BT_MOVEMENT_MAGNETOMETER_Z     "a.bt.read.motion.magnetometer.z"
-#define KEY_BT_MOVEMENT_ACCELEROMETER_X    "a.bt.read.motion.accelerometer.x"
-#define KEY_BT_MOVEMENT_ACCELEROMETER_Y    "a.bt.read.motion.accelerometer.y"
-#define KEY_BT_MOVEMENT_ACCELEROMETER_Z    "a.bt.read.motion.accelerometer.z"
+#define KEY_BT_MOVEMENT_GYRO_X             "a.bt.read.movement.gyroscope.x"
+#define KEY_BT_MOVEMENT_GYRO_Y             "a.bt.read.movement.gyroscope.y"
+#define KEY_BT_MOVEMENT_GYRO_Z             "a.bt.read.movement.gyroscope.z"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_X     "a.bt.read.movement.magnetometer.x"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_Y     "a.bt.read.movement.magnetometer.y"
+#define KEY_BT_MOVEMENT_MAGNETOMETER_Z     "a.bt.read.movement.magnetometer.z"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_X    "a.bt.read.movement.accelerometer.x"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_Y    "a.bt.read.movement.accelerometer.y"
+#define KEY_BT_MOVEMENT_ACCELEROMETER_Z    "a.bt.read.movement.accelerometer.z"
 #define KEY_BT_BAROMETR_TEMPERATURE        "a.bt.read.barometer.temperature"
 #define KEY_BT_BAROMETR_PRESSURE           "a.bt.read.barometer.pressure"
 #define KEY_BT_OPTICAL_LUMINOSITY          "a.bt.read.luminosity"
