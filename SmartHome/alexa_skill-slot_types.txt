@@ -1,0 +1,10 @@
+DEVICE_NAME
+mangoh
+smart
+smart home
+green
+red
+WP
+WP85
+WP75
+WP76

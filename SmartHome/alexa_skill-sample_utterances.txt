@@ -1,0 +1,7 @@
+find find {name}
+find find modem {name}
+find identify {name}
+orientation orientation
+acceleration acceleration
+temperature temperature
+pressure pressure

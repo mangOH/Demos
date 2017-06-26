@@ -1,0 +1,34 @@
+{
+  "intents": [
+    {
+      "slots": [
+        {
+          "name": "name",
+          "type": "DEVICE_NAME"
+        }
+      ],
+      "intent": "find"
+    },
+    {
+      "intent": "locate"
+    },
+    {
+      "intent": "network"
+    },
+    {
+      "intent": "details"
+    },
+    {
+      "intent": "orientation"
+    },
+    {
+      "intent": "acceleration"
+    },
+    {
+      "intent": "temperature"
+    },
+    {
+      "intent": "pressure"
+    }
+  ]
+}
