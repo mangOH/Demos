@@ -7,6 +7,6 @@ requires:
 {
     api:
     {
-        ${MANGOH_ROOT}/apps/DataRouter/dataRouter.api
+        dataRouter.api
     }
 }

@@ -8,7 +8,7 @@ requires:
 {
     api:
     {
-        $MANGOH_ROOT/apps/SocialService/interfaces/twitter.api
-        $MANGOH_ROOT/apps/DataRouter/dataRouter.api
+        twitter.api
+        dataRouter.api
     }
 }

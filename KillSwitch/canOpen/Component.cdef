@@ -24,7 +24,7 @@ provides:
 {
     api:
     {
-        ${MANGOH_ROOT}/samples/Demos/KillSwitch/mangoh_canOpenIox1.api [manual-start]
+        ${CURDIR}/../mangoh_canOpenIox1.api [manual-start]
     }
 }
 
@@ -32,6 +32,6 @@ requires:
 {
     api:
     {
-        ${MANGOH_ROOT}/apps/MuxControl/mangoh_muxCtrl.api
+        mangoh_muxCtrl.api
     }
 }

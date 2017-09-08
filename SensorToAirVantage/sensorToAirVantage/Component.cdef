@@ -12,9 +12,9 @@ requires:
 {
     api:
     {
-        ${MANGOH_ROOT}/apps/DataRouter/dataRouter.api
-        ${MANGOH_ROOT}/apps/MqttClient/mqtt.api
-        ${LEGATO_ROOT}/interfaces/le_cfg.api
+        dataRouter.api
+        mqtt.api
+        le_cfg.api
         modemServices/le_info.api
     }
 }
