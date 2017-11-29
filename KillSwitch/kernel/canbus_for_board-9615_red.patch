@@ -1,0 +1,79 @@
+diff --git a/arch/arm/mach-msm/board-9615.c b/arch/arm/mach-msm/board-9615.c
+index 80c4272..5b32253 100644
+--- a/arch/arm/mach-msm/board-9615.c
++++ b/arch/arm/mach-msm/board-9615.c
+@@ -79,6 +79,15 @@
+ #include <linux/sierra_bsuproto.h>
+ #endif
+ 
++#include <linux/irq.h>
++#include <linux/can/platform/mcp251x.h>
++
++/*
++ * CAN bus GPIO interrupt line uses kernel GPIO73 which maps to user space
++ * GPIO42
++ */
++#define MCP2515_CAN_IRQGPIO_PIN 80
++
+ #ifdef CONFIG_WL_TI
+ #define MSM_WIFI_IRQ_GPIO	80
+ #endif
+@@ -1315,6 +1324,38 @@ static int __init msm9615_init_ar6000pm(void)
+ 	return platform_device_register(&msm_wlan_ar6000_pm_device);
+ }
+ 
++static struct mcp251x_platform_data msm_mcp2515_pdata = {
++	.oscillator_frequency   = 16*1000*1000,
++};
++
++static struct spi_board_info msm_spi_mcp2515_board_info[] = {
++	[0] = {
++		.modalias       = "mcp2515",
++		.platform_data  = &msm_mcp2515_pdata,
++		.max_speed_hz   = 2*1000*1000,
++		.mode           = SPI_MODE_0,
++		.bus_num        = 0,
++		.chip_select    = 0,
++	},
++};
++
++static void __init msm9615_mcp2515_init(void)
++{
++	if ((gpio_request(MCP2515_CAN_IRQGPIO_PIN, "can_irq") == 0) &&
++	    (gpio_direction_input(MCP2515_CAN_IRQGPIO_PIN) == 0)) {
++		gpio_export(MCP2515_CAN_IRQGPIO_PIN, 0);
++		irq_set_irq_type(gpio_to_irq(MCP2515_CAN_IRQGPIO_PIN), IRQ_TYPE_EDGE_FALLING);
++	} else {
++		printk(KERN_ERR "Could not obtain gpio for MCP251X CAN bus interrupt\n");
++		return;
++	}
++	msm_spi_mcp2515_board_info[0].irq = gpio_to_irq(MCP2515_CAN_IRQGPIO_PIN);
++	pr_notice(
++		"msm9615_mcp2515_init init done(gpio:%d  irq:%d).\n",
++		MCP2515_CAN_IRQGPIO_PIN,
++		msm_spi_mcp2515_board_info[0].irq);
++}
++
+ #ifdef CONFIG_WL_TI
+ static struct platform_device msm_wl18xx_device = {
+ 	.name           = "wl18xx_driver",
+@@ -1617,6 +1658,7 @@ static void __init msm9615_common_init(void)
+ 	struct android_usb_platform_data *android_hsic_pdata =
+ 				msm_android_usb_hsic_device.dev.platform_data;
+ 
++	pr_notice("Kernel with CANBUS support initializing\n");
+ 	msm9615_device_init();
+ 	msm9615_init_gpiomux();
+ 	msm9615_i2c_init();
+@@ -1635,6 +1677,11 @@ static void __init msm9615_common_init(void)
+ 				&msm9615_qup_spi_gsbi3_pdata;
+ #endif /* CONFIG_SIERRA_GSBI3_SPI */
+ 
++	msm9615_mcp2515_init();
++	spi_register_board_info(
++		msm_spi_mcp2515_board_info,
++		ARRAY_SIZE(msm_spi_mcp2515_board_info));
++
+ #ifdef CONFIG_SIERRA
+ 	/* update CF3 specific ADC channel table */
+ 	if (bssupport(BSFEATURE_CF3))
