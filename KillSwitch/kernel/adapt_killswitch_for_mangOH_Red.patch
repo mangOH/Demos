@@ -1,0 +1,89 @@
+diff --git a/KillSwitch/canOpen/Component.cdef b/KillSwitch/canOpen/Component.cdef
+index 470570a..18e00a7 100644
+--- a/KillSwitch/canOpen/Component.cdef
++++ b/KillSwitch/canOpen/Component.cdef
+@@ -32,6 +32,6 @@ requires:
+ {
+     api:
+     {
+-        mangoh_muxCtrl.api
++        //mangoh_muxCtrl.api
+     }
+ }
+diff --git a/KillSwitch/canOpen/mangoh_canOpen_iox1.c b/KillSwitch/canOpen/mangoh_canOpen_iox1.c
+index d9404bd..8664cdb 100644
+--- a/KillSwitch/canOpen/mangoh_canOpen_iox1.c
++++ b/KillSwitch/canOpen/mangoh_canOpen_iox1.c
+@@ -130,9 +130,9 @@ static unsigned char genericDigitalInput(const char* cmd)
+ 
+ COMPONENT_INIT
+ {
+-    LE_FATAL_IF(mangoh_muxCtrl_Iot1Spi1On() != LE_OK, "Couldn't eanble SPI on IoT slot 1");
+-    LE_FATAL_IF(
+-        mangoh_muxCtrl_IotSlot1DeassertReset() != LE_OK, "Couldn't take IoT slot 1 out of reset");
++    //LE_FATAL_IF(mangoh_muxCtrl_Iot1Spi1On() != LE_OK, "Couldn't eanble SPI on IoT slot 1");
++    //LE_FATAL_IF(
++    //    mangoh_muxCtrl_IotSlot1DeassertReset() != LE_OK, "Couldn't take IoT slot 1 out of reset");
+     // Run the can-init.sh before advertising the service to ensure that the CAN device is
+     // available before we allow it to be used.
+     char line[256];
+diff --git a/KillSwitch/killSwitch.adef b/KillSwitch/killSwitch.adef
+index 5b995c7..1f56ead 100644
+--- a/KillSwitch/killSwitch.adef
++++ b/KillSwitch/killSwitch.adef
+@@ -30,6 +30,6 @@ bindings:
+ {
+     killSwitch.killSwitch.dataRouter -> dataRouter.dataRouter
+     killSwitch.killSwitch.mangoh_canOpenIox1 -> canOpen.canOpen.mangoh_canOpenIox1
+-    canOpen.canOpen.mangoh_muxCtrl -> muxCtrlService.mangoh_muxCtrl
++    //canOpen.canOpen.mangoh_muxCtrl -> muxCtrlService.mangoh_muxCtrl
+ }
+ 
+diff --git a/KillSwitch/script/can-init.sh b/KillSwitch/script/can-init.sh
+index c95a945..5f2dc76 100755
+--- a/KillSwitch/script/can-init.sh
++++ b/KillSwitch/script/can-init.sh
+@@ -1,17 +1,35 @@
+ #!/bin/sh
+ 
+ export PATH=$PATH:/sbin
+-modprobe can &&
+-sleep 3 &&
+-modprobe can-dev &&
+-sleep 3 &&
+-modprobe can-raw &&
+-sleep 3 &&
+-modprobe mcp251x &&
+-sleep 3
++
+ 
+ CAN=`ifconfig | cut -c -4 | sed 's/^\s\+//' | sort | uniq | grep can0`
+ if [ -z "$CAN" ]; then
++    # Take IoT card out of reset
++    echo 2 > /sys/class/gpio/export &&
++    sleep 1 &&
++    echo out  > /sys/class/gpio/gpio2/direction &&
++    sleep 1 &&
++    echo 1  > /sys/class/gpio/gpio2/value &&
++    sleep 1 &&
++
++    # Enable level shifter on the CAN IoT card
++    echo 13 > /sys/class/gpio/export &&
++    sleep 1 &&
++    echo out  > /sys/class/gpio/gpio13/direction &&
++    sleep 1 &&
++    echo 1  > /sys/class/gpio/gpio13/value &&
++    sleep 1 &&
++
++    modprobe can &&
++    sleep 3 &&
++    modprobe can-dev &&
++    sleep 3 &&
++    modprobe can-raw &&
++    sleep 3 &&
++    modprobe mcp251x &&
++    sleep 3 &&
++
+     ip link set can0 type can bitrate 125000 triple-sampling on &&
+     sleep 3 &&
+     ifconfig can0 up
