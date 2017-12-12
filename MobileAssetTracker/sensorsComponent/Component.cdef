@@ -1,0 +1,39 @@
+cflags:
+{
+    -std=c99
+    -DGPS_ENABLE
+}
+
+requires:
+{
+    api:
+    {
+        le_adc.api
+        positioning/le_posCtrl.api
+        positioning/le_pos.api
+    }
+
+    file:
+    {
+        /sys/bus/i2c/devices/4-0068/iio:device0/in_accel_x_raw    /sys/devices/i2c-0/0-0068/iio:device0/
+        /sys/bus/i2c/devices/4-0068/iio:device0/in_accel_y_raw    /sys/devices/i2c-0/0-0068/iio:device0/
+        /sys/bus/i2c/devices/4-0068/iio:device0/in_accel_z_raw    /sys/devices/i2c-0/0-0068/iio:device0/
+        /sys/bus/i2c/devices/4-0068/iio:device0/in_accel_scale    /sys/devices/i2c-0/0-0068/iio:device0/
+        /sys/bus/i2c/devices/4-0068/iio:device0/in_anglvel_x_raw  /sys/devices/i2c-0/0-0068/iio:device0/
+        /sys/bus/i2c/devices/4-0068/iio:device0/in_anglvel_y_raw  /sys/devices/i2c-0/0-0068/iio:device0/
+        /sys/bus/i2c/devices/4-0068/iio:device0/in_anglvel_z_raw  /sys/devices/i2c-0/0-0068/iio:device0/
+        /sys/bus/i2c/devices/4-0068/iio:device0/in_anglvel_scale  /sys/devices/i2c-0/0-0068/iio:device0/
+        /sys/bus/i2c/devices/4-0076/iio:device1/in_temp_input     /sys/devices/i2c-0/0-0076/iio:device1/
+        /sys/bus/i2c/devices/4-0076/iio:device1/in_pressure_input /sys/devices/i2c-0/0-0076/iio:device1/
+    }
+}
+
+sources:
+{
+    init.c
+    sensorUtils.c
+    lightSensor.c
+    pressureSensor.c
+    accelerometer.c
+    gps.c
+}

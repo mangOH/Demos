@@ -1,0 +1,32 @@
+sandboxed: true
+version: 0.1
+start: auto
+
+executables:
+{
+    mobileAssetTracker = (avPublisherComponent sensorsComponent)
+}
+
+processes:
+{
+    run:
+    {
+        ( mobileAssetTracker )
+    }
+
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+}
+
+bindings:
+{
+    mobileAssetTracker.sensorsComponent.le_adc -> modemService.le_adc
+    mobileAssetTracker.sensorsComponent.le_pos -> positioningService.le_pos
+    mobileAssetTracker.sensorsComponent.le_posCtrl -> positioningService.le_posCtrl
+    mobileAssetTracker.avPublisherComponent.le_avdata -> avcService.le_avdata
+    mobileAssetTracker.avPublisherComponent.le_mrc -> modemService.le_mrc
+    mobileAssetTracker.avPublisherComponent.le_data -> dataConnectionService.le_data
+    mobileAssetTracker.avPublisherComponent.le_wifiClient -> wifiService.le_wifiClient
+}

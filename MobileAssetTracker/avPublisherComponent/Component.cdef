@@ -1,0 +1,27 @@
+cflags:
+{
+    -std=c99
+    -I${CURDIR}/../sensorsComponent
+    -DGPS_ENABLE
+}
+
+requires:
+{
+    api:
+    {
+        airVantage/le_avdata.api
+	modemServices/le_mrc.api
+	le_data.api
+	wifi/le_wifiClient.api 
+    }
+
+    component:
+    {
+        sensorsComponent
+    }
+}
+
+sources:
+{
+    avPublisher.c
+}
