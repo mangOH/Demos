@@ -1,0 +1,24 @@
+version: 1.0
+sandboxed: true
+start: manual
+
+executables:
+{
+    shakeNWake = (shakeNWakeComponent)
+}
+
+processes:
+{
+    run:
+    {
+        (shakeNWake)
+    }
+
+    faultAction: stopApp
+}
+
+bindings:
+{
+    shakeNWake.shakeNWakeComponent.le_ulpm       -> powerMgr.le_ulpm
+    shakeNWake.shakeNWakeComponent.le_bootReason -> powerMgr.le_bootReason
+}

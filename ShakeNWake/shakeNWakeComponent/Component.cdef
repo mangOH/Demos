@@ -1,0 +1,13 @@
+requires:
+{
+    api:
+    {
+        le_ulpm.api
+        le_bootReason.api
+    }
+}
+
+sources:
+{
+    shakeNWake.c
+}
