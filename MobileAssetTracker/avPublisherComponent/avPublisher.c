@@ -1549,7 +1549,6 @@ static void AvSessionStateHandler
         }
 
         case LE_AVDATA_SESSION_STOPPED:
-            LE_ASSERT_OK(le_timer_Stop(SampleTimer));
             break;
 
         default:
