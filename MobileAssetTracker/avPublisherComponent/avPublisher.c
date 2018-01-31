@@ -595,7 +595,7 @@ static le_result_t LightSensorRecord
     void *value                ///< The int32_t value to record
 )
 {
-    const char *path = "Sensors/Light/Level";
+    const char *path = "Sensors.Light.Level";
     int32_t *v = value;
     le_result_t result = le_avdata_RecordInt(RecordRef, path, *v, timestamp);
     if (result != LE_OK)
@@ -677,7 +677,7 @@ static le_result_t PressureSensorRecord
     void *value                ///< The double value to record
 )
 {
-    const char *path = "Sensors/Pressure/Pressure";
+    const char *path = "Sensors.Pressure.Pressure";
     double *v = value;
     le_result_t result = le_avdata_RecordFloat(RecordRef, path, *v, timestamp);
     if (result != LE_OK)
@@ -758,7 +758,7 @@ static le_result_t TemperatureSensorRecord
     void *value                ///< The double value to record
 )
 {
-    const char *path = "Sensors/Pressure/Temperature";
+    const char *path = "Sensors.Pressure.Temperature";
     double *v = value;
     le_result_t result = le_avdata_RecordFloat(RecordRef, path, *v, timestamp);
     if (result != LE_OK)
@@ -847,11 +847,13 @@ static le_result_t AccelerometerRecord
 )
 {
     // The '_' is a placeholder that will be replaced
-    char path[] = "Sensors/Accelerometer/Acceleration/_";
+    char path[] = "Sensors.Accelerometer.Acceleration/";
     struct Acceleration *v = value;
+    int end = strnlen(path, sizeof(path));
     le_result_t result = LE_FAULT;
 
-    path[sizeof(path) - 2] = 'X';
+    path[end] = 'X';
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->x, timestamp);
     if (result != LE_OK)
     {
@@ -859,7 +861,8 @@ static le_result_t AccelerometerRecord
         goto done;
     }
 
-    path[sizeof(path) - 2] = 'Y';
+    path[end] = 'Y';
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->y, timestamp);
     if (result != LE_OK)
     {
@@ -867,7 +870,8 @@ static le_result_t AccelerometerRecord
         goto done;
     }
 
-    path[sizeof(path) - 2] = 'Z';
+    path[end] = 'Z';
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->z, timestamp);
     if (result != LE_OK)
     {
@@ -1137,7 +1141,7 @@ static le_result_t LocationRecord
 
     if (strlen(v->mcc) > 0) 
     {
-        result = le_avdata_RecordString(RecordRef, "Sensors/Location/CellInfo/MCC", v->mcc, timestamp);
+        result = le_avdata_RecordString(RecordRef, "Sensors.Location.CellInfo.MCC", v->mcc, timestamp);
         if (result != LE_OK)
         {
             LE_ERROR("Couldn't record location cell ID reading - %s", LE_RESULT_TXT(result));
@@ -1147,7 +1151,7 @@ static le_result_t LocationRecord
 
     if (strlen(v->mnc) > 0) 
     {
-        result = le_avdata_RecordString(RecordRef, "Sensors/Location/CellInfo/MNC", v->mnc, timestamp);
+        result = le_avdata_RecordString(RecordRef, "Sensors.Location.CellInfo.MNC", v->mnc, timestamp);
         if (result != LE_OK)
         {
             LE_ERROR("Couldn't record location cell ID reading - %s", LE_RESULT_TXT(result));
@@ -1161,7 +1165,8 @@ static le_result_t LocationRecord
 
 	if (v->cellInfo[i].cid != -1)
 	{
-	    snprintf(node, sizeof(node), "Sensors/Location/CellInfo/%d/Cid", i + 1);
+	    snprintf(node, sizeof(node), "Sensors.Location.CellInfo.%d.Cid", i + 1);
+            LE_INFO("node('%s')", node);
             result = le_avdata_RecordInt(RecordRef, node, v->cellInfo[i].cid, timestamp);
             if (result != LE_OK)
             {
@@ -1172,7 +1177,8 @@ static le_result_t LocationRecord
 
 	if ((v->cellInfo[i].lac != UINT16_MAX) && (v->cellInfo[i].lac != -1))
 	{
-	    snprintf(node, sizeof(node), "Sensors/Location/CellInfo/%d/Lac", i + 1);
+	    snprintf(node, sizeof(node), "Sensors.Location.CellInfo.%d.Lac", i + 1);
+            LE_INFO("node('%s')", node);
             result = le_avdata_RecordInt(RecordRef, node, v->cellInfo[i].lac, timestamp);
             if (result != LE_OK)
             {
@@ -1183,7 +1189,8 @@ static le_result_t LocationRecord
 
 	if (v->cellInfo[i].signal)
 	{
-	    snprintf(node, sizeof(node), "Sensors/Location/CellInfo/%d/Signal", i + 1);
+	    snprintf(node, sizeof(node), "Sensors.Location.CellInfo.%d.Signal", i + 1);
+            LE_INFO("node('%s')", node);
             result = le_avdata_RecordInt(RecordRef, node, v->cellInfo[i].signal, timestamp);
             if (result != LE_OK)
             {
@@ -1200,7 +1207,8 @@ static le_result_t LocationRecord
     {
 	char node[128];
 
-	snprintf(node, sizeof(node), "Sensors/Location/WiFi/%d/Ssid", i + 1);
+	snprintf(node, sizeof(node), "Sensors.Location.WiFi.%d.Ssid", i + 1);
+        LE_INFO("node('%s')", node);
     	result = le_avdata_RecordString(RecordRef, node, (const char*)v->wifiInfo[i].ssid, timestamp);
     	if (result != LE_OK)
     	{
@@ -1208,7 +1216,8 @@ static le_result_t LocationRecord
             goto done;
     	}
 
-	snprintf(node, sizeof(node), "Sensors/Location/WiFi/%d/Bssid", i + 1);
+	snprintf(node, sizeof(node), "Sensors.Location.WiFi.%d.Bssid", i + 1);
+        LE_INFO("node('%s')", node);
     	result = le_avdata_RecordString(RecordRef, node, v->wifiInfo[i].bssid, timestamp);
     	if (result != LE_OK)
     	{
@@ -1216,7 +1225,8 @@ static le_result_t LocationRecord
             goto done;
     	}
 
-	snprintf(node, sizeof(node), "Sensors/Location/WiFi/%d/Signal", i + 1);
+	snprintf(node, sizeof(node), "Sensors.Location.WiFi.%d.Signal", i + 1);
+        LE_INFO("node('%s')", node);
     	result = le_avdata_RecordInt(RecordRef, node, v->wifiInfo[i].signal, timestamp);
     	if (result != LE_OK)
     	{
@@ -1331,11 +1341,13 @@ static le_result_t GyroRecord
 )
 {
     // The '_' is a placeholder that will be replaced
-    char path[] = "Sensors/Accelerometer/Gyro/_";
+    char path[] = "Sensors.Accelerometer.Gyro.";
     struct Gyro *v = value;
+    int end = strnlen(path, sizeof(path));
     le_result_t result = LE_FAULT;
 
-    path[sizeof(path) - 2] = 'X';
+    path[end] = 'X';
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->x, timestamp);
     if (result != LE_OK)
     {
@@ -1343,7 +1355,8 @@ static le_result_t GyroRecord
         goto done;
     }
 
-    path[sizeof(path) - 2] = 'Y';
+    path[end] = 'Y';
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->y, timestamp);
     if (result != LE_OK)
     {
@@ -1351,7 +1364,8 @@ static le_result_t GyroRecord
         goto done;
     }
 
-    path[sizeof(path) - 2] = 'Z';
+    path[end] = 'Z';
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->z, timestamp);
     if (result != LE_OK)
     {
@@ -1448,12 +1462,13 @@ static le_result_t GpsRecord
     void *value                ///< The struct Gps value to record
 )
 {
-    char path[128] = "Sensors/Gps/";
+    char path[128] = "lwm2m.6.0.";
     int end = strnlen(path, sizeof(path));
     struct Location3d *v = value;
     le_result_t result = LE_FAULT;
 
-    strcpy(&path[end], "Latitude");
+    strcpy(&path[end], "0");
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->latitude, timestamp);
     if (result != LE_OK)
     {
@@ -1461,7 +1476,8 @@ static le_result_t GpsRecord
         goto done;
     }
 
-    strcpy(&path[end], "Longitude");
+    strcpy(&path[end], "1");
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->longitude, timestamp);
     if (result != LE_OK)
     {
@@ -1469,7 +1485,8 @@ static le_result_t GpsRecord
         goto done;
     }
 
-    strcpy(&path[end], "HorizontalAccuracy");
+    strcpy(&path[end], "3");
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->hAccuracy, timestamp);
     if (result != LE_OK)
     {
@@ -1477,7 +1494,8 @@ static le_result_t GpsRecord
         goto done;
     }
 
-    strcpy(&path[end], "Altitude");
+    strcpy(&path[end], "2");
+    LE_INFO("path('%s')", path);
     result = le_avdata_RecordFloat(RecordRef, path, v->altitude, timestamp);
     if (result != LE_OK)
     {
@@ -1485,8 +1503,7 @@ static le_result_t GpsRecord
         goto done;
     }
 
-    strcpy(&path[end], "VerticalAccuracy");
-    result = le_avdata_RecordFloat(RecordRef, path, v->vAccuracy, timestamp);
+    result = le_avdata_RecordFloat(RecordRef, "Sensors.Gps.VerticalAccuracy", v->vAccuracy, timestamp);
     if (result != LE_OK)
     {
         LE_ERROR("Couldn't record gps vertical accuracy reading - %s", LE_RESULT_TXT(result));
