@@ -847,7 +847,7 @@ static le_result_t AccelerometerRecord
 )
 {
     // The '_' is a placeholder that will be replaced
-    char path[] = "Sensors.Accelerometer.Acceleration/";
+    char path[] = "Sensors.Accelerometer.Acceleration._";
     struct Acceleration *v = value;
     int end = strnlen(path, sizeof(path));
     le_result_t result = LE_FAULT;
@@ -1573,8 +1573,6 @@ static void AvSessionStateHandler
                 LE_DEBUG("Record push timer not running");
             }
 
-            AvSession = le_avdata_RequestSession();
-            LE_FATAL_IF(AvSession == NULL, "Failed to request avdata session");
             break;
         }
         default:
