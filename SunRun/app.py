@@ -20,8 +20,8 @@ def unix_seconds_now():
     print("time now is {}".format(now))
     return calendar.timegm(now)
 now_s = unix_seconds_now()
-start_time_ms = (now_s - (60 * 60 * 19)) * 1000
-end_time_ms = (now_s - (60 * 60 * 17)) * 1000
+start_time_ms = (now_s - (60 * 60 * 4)) * 1000
+end_time_ms = (now_s ) * 1000
 
 external_stylesheets = ['https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css']
 
@@ -33,14 +33,14 @@ cache = Cache(app.server, config={
 })
 
 creds = {
-    'X-Auth-Token': getenv('TOKEN', 'YOURCRED'),
-    'X-Auth-User': getenv('USER', 'YOURUSERNAME')
+    'X-Auth-Token': getenv('TOKEN', 'yourtoken'),
+    'X-Auth-User': getenv('USER', 'yourusername')
 }
 
 company = getenv('COMPANY', 'mango_dev')
 device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
 
-mapbox_access_token = getenv('MAPBOX_ACCESS', 'YOURACCESPASS')
+mapbox_access_token = getenv('MAPBOX_ACCESS', 'youraccesstoken')
 
 colors = {
     'background': '#111111',
@@ -107,14 +107,14 @@ def get_battpercent_for_device(device_name):
     print("processing  battery{}".format(device_name))
     events = get_events_for_device_stream(device_name, 'battper2c', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
    
-    def scatter_for_battery():
+    def scatter_for_batterypercent():
         return go.Scatter(
             x=[datetime.fromtimestamp(e['generatedDate']/1000.0) for e in events],
             y=[e['elems']['battery']['BatteryPercentage'] for e in events],
             name='Battery Percentage' 
         )
 
-    return [scatter_for_battery()]
+    return [scatter_for_batterypercent()]
 
 def get_battcurrent_for_device(device_name):
     print("processing  battery current{}".format(device_name))
@@ -137,7 +137,7 @@ def get_temp_for_device(device_name):
     def scatter_for_temp():
         return go.Scatter(
             x=[datetime.fromtimestamp(e['generatedDate']/1000.0) for e in events],
-            y=[e['elems']['yellowSensor']['environment']['temp'] for e in events],
+            y=[e['elems']['yellowSensor']['bsec']['temperature'] for e in events],
             name='Ambient Temperature' 
         )
 
@@ -150,7 +150,7 @@ def get_pressure_for_device(device_name):
     def scatter_for_pressure():
         return go.Scatter(
             x=[datetime.fromtimestamp(e['generatedDate']/1000.0) for e in events],
-            y=[e['elems']['yellowSensor']['environment']['pressure'] for e in events],
+            y=[e['elems']['yellowSensor']['bsec']['pressure'] for e in events],
             name='Ambient Pressure' 
         )
 
@@ -159,12 +159,12 @@ def get_pressure_for_device(device_name):
 
 def get_humidity_for_device(device_name):
     print("processing  humidity{}".format(device_name))
-    events = get_events_for_device_stream(device_name, 'humidity', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
+    events = get_events_for_device_stream(device_name, 'humidity2c', 'generatedDate>={}&&generatedDate<={}&&CONTAINS=humidity'.format(start_time_ms, end_time_ms), 100000)
    
     def scatter_for_humidity():
         return go.Scatter(
             x=[datetime.fromtimestamp(e['generatedDate']/1000.0) for e in events],
-            y=[e['elems']['yellowSensor']['environment']['humidity'] for e in events],
+            y=[e['elems']['yellowSensor']['bsec']['humidity'] for e in events],
             name='Ambient Humidity' 
         )
 
@@ -172,12 +172,12 @@ def get_humidity_for_device(device_name):
 
 def get_airqual_for_device(device_name):
     print("processing  airqual{}".format(device_name))
-    events = get_events_for_device_stream(device_name, 'airqual2c', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
+    events = get_events_for_device_stream(device_name, 'iaq2c', 'generatedDate>={}&&generatedDate<={}&&CONTAINS=iaqValue'.format(start_time_ms, end_time_ms), 100000)
    
     def scatter_for_airquality():
         return go.Scatter(
             x=[datetime.fromtimestamp(e['generatedDate']/1000.0) for e in events],
-            y=[e['elems']['yellowSensor']['environment']['gas'] for e in events],
+            y=[e['elems']['yellowSensor']['bsec']['iaqValue'] for e in events],
             name='Ambient Air Quality Index' 
         )
 
@@ -213,7 +213,7 @@ def get_map_history_from_device(device_name):
     latitudes = []
     longitudes = []
     
-    events = get_events_for_device_stream(device_name, 'location', 'elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}'.format(start_time_ms, end_time_ms), 10000)
+    events = get_events_for_device_stream(device_name, 'location', 'elems.location.coordinates.ts>={} && elems.location.coordinates.ts<={}'.format(start_time_ms, end_time_ms), 10000)
     print("processing {} with {} events".format(device_name, len(events)))
     for e in events:
         coords = e['elems']['location']['coordinates']
@@ -223,14 +223,19 @@ def get_map_history_from_device(device_name):
         label = "{}, {} @ {}".format(lat, lon, ts)
         labels.append(label)
         latitudes.append(lat)
-        longiitudes.append(lon)
+        longitudes.append(lon)
     return [dict(
         type = 'scattermapbox',
         lon = longitudes,
         lat = latitudes,
         text = labels,
-        mode = 'line+markers',
-        marker = dict(size = 8)
+        mode = 'lines+markers',
+        #marker = dict(size = 8)
+        marker={
+            'size': 15,
+            'opacity': 0.5,
+            'line': {'width': 0.5, 'color': 'white'}
+        }
         )]
 
 
@@ -260,14 +265,6 @@ def generate_layout():
            ]),
         ]),
 
-        #html.Div(className='row', children=[
-        #    html.Div(className='col-6', children=[
-        #        dcc.Graph(id='accel-time-series')
-        #    ]),
-            #html.Div(className='col-6', children=[
-            #    dcc.Graph(id='accel-time-series')
-            #]),
-        #]),    
 
         html.Div(className='row', children=[
             html.Div(className='col-6', children=[
@@ -349,10 +346,12 @@ def update_location_map(slider_timestamp, mapdata):
 )
 #def update_location_map(n, mapdata):
 def update_location_history(clickData, mapdata):
+    print("in update location history")
     if not clickData: return {}
     device_name = clickData['points'][0]['text']
     print(mapdata)
     location_data = get_map_history_from_device(device_name)
+    print("location data {}".format(location_data))
     fig = {
         'data': location_data,
         'layout': {
@@ -375,69 +374,7 @@ def update_location_history(clickData, mapdata):
             },
         },
     }
-
-
-def update_gyro_common(device_name):
-    gyro_data = get_gyro_for_device(device_name)
-    return {
-        'data': gyro_data,
-        'layout': {
-            'title': 'Gyro Data for "%s"' % device_name,
-            'plot_bgcolor': colors['background'],
-            'paper_bgcolor': colors['background'],
-            'font': {
-                    'color': colors['text']
-            }
-        }
-    }
-
-#@app.callback(
-#    Output('gyro-time-series', 'figure'),
-#    [Input('drop-down', 'value')]
-#)
-#def update_gyro_dropdown(device_name):
-#    return update_gyro_common(device_name)
-
-
-#@app.callback(
-#    Output('gyro-time-series', 'figure'),
-#    [Input('live-update-map', 'clickData')]
-#)
-#def update_gyro(clickData):
-#    if not clickData: return {}
-#    device_name = clickData['points'][0]['text']
-#    return update_gyro_common(device_name)
-#
-
-#def update_accel_common(device_name):
-#    accel_data = get_accel_for_device(device_name)
-#    return {
-#        'data': accel_data,
-#        'layout': {
-#            'title': 'Accel Data for "%s"' % device_name,
-#            'plot_bgcolor': colors['background'],
-#            'paper_bgcolor': colors['background'],
-#            'font': {
-#                    'color': colors['text']
-#            }
-#        }
-#    }
-
-#@app.callback(
-#    Output('accel-time-series', 'figure'),
-#    [Input('drop-down', 'value')]
-#)
-#def update_accel_dropdown(device_name):
-#    return update_accel_common(device_name)
-
-#@app.callback(
-#    Output('accel-time-series', 'figure'),
-#    [Input('live-update-map', 'clickData')]
-#)
-#def update_accel(clickData):
-#    if not clickData: return {}
-#    device_name = clickData['points'][0]['text']
-#    return update_accel_common(device_name)
+    return fig
 
 def update_batterypercent_common(device_name):
     battpercent_data = get_battpercent_for_device(device_name)
@@ -477,7 +414,7 @@ def update_batterycurrent_common(device_name):
     }
 
 @app.callback(
-    Output('battcurrent-time-series', 'figure'),
+   Output('battcurrent-time-series', 'figure'),
     [Input('live-update-map', 'clickData')]
 )
 def update_batterycurrent(clickData):
@@ -502,10 +439,10 @@ def update_temp_common(device_name):
         }
     }
 
-#@app.callback(
-#    Output('temp-time-series', 'figure'),
-#    [Input('live-update-map', 'clickData')]
-#)
+@app.callback(
+    Output('temp-time-series', 'figure'),
+    [Input('live-update-map', 'clickData')]
+)
 def update_temp(clickData):
     if not clickData: return {}
     device_name = clickData['points'][0]['text']
@@ -585,5 +522,5 @@ def update_airqual(clickData):
 
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', debug=True)   
+    app.run_server(host='10.1.70.13', debug=True)   
 	
