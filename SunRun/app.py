@@ -99,7 +99,7 @@ creds = {
     'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
 }
 
-company = getenv('COMPANY', 'YOUR_COMPANY')
+company = getenv('COMPANY', sun_run_settings.octave_company)
 device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
 
 mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.mapbox_access_token)
@@ -390,7 +390,7 @@ def update_location_history(clickData, mapdata):
             'title': 'Location History',
             'mapbox': {
                 'center': {},
-                'accesstoken': mapbox_access_token,
+                'accesstoken': sun_run_settings.mapbox_access_token,
                 'center': {
                     'lat': 49.172477,
                     'lon': -123.071298
