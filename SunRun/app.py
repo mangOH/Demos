@@ -556,5 +556,5 @@ def update_airqual(clickData):
 
 
 if __name__ == '__main__':
-    app.run_server(host='10.1.70.13', debug=True)   
+    app.run_server(host='0.0.0.0', debug=True)
 	
