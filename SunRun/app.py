@@ -160,10 +160,13 @@ def update_devices():
     devices = all_devs
 
 
-def update_devices_every(period=20):
+def run_periodically(fn, period=timedelta(seconds=20)):
+    """
+    Run a given function in a loop with a delay before each subsequent run
+    """
     while True:
-        update_devices()
-        time.sleep(period)
+        fn()
+        time.sleep(period.total_seconds())
 
 
 @cache.memoize(timeout=2)
@@ -549,10 +552,11 @@ print("start time: {}, end time: {}".format(
 print("gen_marker :{}".format(gen_marks(start_time, end_time, 10)))
 print("time_generator :{}".format(time_generator(start_time, end_time, 10)))
 
-update_devices()
+devices = None
 executor = ThreadPoolExecutor(max_workers=1)
-executor.submit(update_devices_every, period=device_update_interval)
-time.sleep(2)  # make sure devices get loaded
+executor.submit(run_periodically, update_devices, period=timedelta(seconds=device_update_interval))
+while (devices is None):
+    time.sleep(2)  # make sure devices get loaded
 
 
 if __name__ == '__main__':
