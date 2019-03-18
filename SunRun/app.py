@@ -24,6 +24,89 @@ import requests
 import sun_run_settings
 
 
+def generate_layout():
+    return html.Div(children=[
+        html.H1(children='Vancouver Sun Run mangOH Yellow Tracking'),
+        html.Div(children='''
+           Continous tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
+        '''),
+        html.Div(children=[
+            html.A(
+                "For more information visit mangoh.io", href='https://mangoh.io', target="_blank")
+        ]),
+        html.Div(
+            className='row',
+            children=[
+                html.Div(
+                    className='col-12',
+                    children=[
+                        dcc.Graph(id='live-update-map'),
+                        #dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, marks={'{}'.format(gen_marks(start_time,end_time, time_delta))},value=start_time_ms, updatemode='mouseup'),
+                        #  dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, marks=gen_marks(start_time,end_time, time_delta),value=start_time_ms, updatemode='mouseup'),
+                        dcc.Slider(
+                            id='time-slider',
+                            min=start_time_ms,
+                            max=end_time_ms,
+                            value=start_time_ms,
+                            updatemode='mouseup'),
+                        # html.Div(id='live', style={'margin-top': 20}
+                        dcc.Interval(
+                            id='interval-component', interval=10 * 1000, n_intervals=0)
+                    ]),
+            ]),
+        html.Div(className='row',
+                 children=[
+                     html.Div(className='col-12', children=[dcc.Graph(id='history-location-map'),
+                                                            ]),
+                 ]),
+        html.Div(
+            className='row',
+            children=[
+                html.Div(className='col-6', children=[dcc.Graph(id='battpercent-time-series')]),
+                html.Div(className='col-6', children=[dcc.Graph(id='battcurrent-time-series')]),
+            ]),
+        html.Div(className='row',
+                 children=[
+                     html.Div(className='col-6', children=[dcc.Graph(id='temp-time-series')]),
+                     html.Div(className='col-6', children=[dcc.Graph(id='pressure-time-series')]),
+                 ]),
+        html.Div(className='row',
+                 children=[
+                     html.Div(className='col-6', children=[dcc.Graph(id='humidity-time-series')]),
+                     html.Div(className='col-6', children=[dcc.Graph(id='airqual-time-series')]),
+                 ]),
+    ])
+
+
+vancouver_timezone = timezone(timedelta(hours=-7))
+end_time = datetime.now(tz=vancouver_timezone)
+start_time = end_time + timedelta(hours=-12)
+
+end_time_ms = int(end_time.timestamp() * 1000)
+start_time_ms = int(start_time.timestamp() * 1000)
+time_delta = 10
+
+external_stylesheets = ['https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app.title = 'mangOH Sun Run'
+app.layout = generate_layout()
+
+cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
+
+creds = {
+    'X-Auth-Token': getenv('OCTAVE_TOKEN', sun_run_settings.octave_token),
+    'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
+}
+
+company = getenv('COMPANY', 'YOUR_COMPANY')
+device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
+
+mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.mapbox_access_token)
+
+colors = {'background': '#111111', 'text': '#7FDBFF'}
+
+
 def time_generator(start_time, end_time, minute_increment):
     minute = (int(start_time.minute / minute_increment) + 1) * minute_increment
     t = start_time + timedelta(
@@ -68,7 +151,7 @@ def update_devices():
     global devices
     print('Updating Devices')
     url = 'https://octave-api.sierrawireless.io/v5.0/{}/device/?filter=tags.{}%3D%3D%22true%22'.format(
-        sun_run_settings.ocatve_company, sun_run_settings.octave_device_tag)
+        sun_run_settings.octave_company, sun_run_settings.octave_device_tag)
     all_devs = [d for d in requests.get(url, headers=creds).json()['body']]
     for d in all_devs:
         print("found device{}".format(d["name"]))
@@ -77,7 +160,7 @@ def update_devices():
     devices = all_devs
 
 
-def update_devices_every(period=device_update_interval):
+def update_devices_every(period=20):
     while True:
         update_devices()
         time.sleep(period)
@@ -247,61 +330,6 @@ def get_map_history_from_device(device_name):
                         'color': 'white'
                     }})
     ]
-
-
-def generate_layout():
-
-    return html.Div(children=[
-        html.H1(children='Vancouver Sun Run mangOH Yellow Tracking'),
-        html.Div(children='''
-           Continous tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
-        '''),
-        html.Div(children=[
-            html.A(
-                "For more information visit mangoh.io", href='https://mangoh.io', target="_blank")
-        ]),
-        html.Div(
-            className='row',
-            children=[
-                html.Div(
-                    className='col-12',
-                    children=[
-                        dcc.Graph(id='live-update-map'),
-                        #dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, marks={'{}'.format(gen_marks(start_time,end_time, time_delta))},value=start_time_ms, updatemode='mouseup'),
-                        #  dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, marks=gen_marks(start_time,end_time, time_delta),value=start_time_ms, updatemode='mouseup'),
-                        dcc.Slider(
-                            id='time-slider',
-                            min=start_time_ms,
-                            max=end_time_ms,
-                            value=start_time_ms,
-                            updatemode='mouseup'),
-                        # html.Div(id='live', style={'margin-top': 20}
-                        dcc.Interval(
-                            id='interval-component', interval=10 * 1000, n_intervals=0)
-                    ]),
-            ]),
-        html.Div(className='row',
-                 children=[
-                     html.Div(className='col-12', children=[dcc.Graph(id='history-location-map'),
-                                                            ]),
-                 ]),
-        html.Div(
-            className='row',
-            children=[
-                html.Div(className='col-6', children=[dcc.Graph(id='battpercent-time-series')]),
-                html.Div(className='col-6', children=[dcc.Graph(id='battcurrent-time-series')]),
-            ]),
-        html.Div(className='row',
-                 children=[
-                     html.Div(className='col-6', children=[dcc.Graph(id='temp-time-series')]),
-                     html.Div(className='col-6', children=[dcc.Graph(id='pressure-time-series')]),
-                 ]),
-        html.Div(className='row',
-                 children=[
-                     html.Div(className='col-6', children=[dcc.Graph(id='humidity-time-series')]),
-                     html.Div(className='col-6', children=[dcc.Graph(id='airqual-time-series')]),
-                 ]),
-    ])
 
 
 @app.callback(
@@ -516,46 +544,15 @@ def update_airqual(clickData):
     return update_airqual_common(device_name)
 
 
-
-vancouver_timezone = timezone(timedelta(hours=-7))
-end_time = datetime.now(tz=vancouver_timezone)
-start_time = end_time + timedelta(hours=-12)
-
-end_time_ms = int(end_time.timestamp() * 1000)
-start_time_ms = int(start_time.timestamp() * 1000)
-time_delta = 10
-
 print("start time: {}, end time: {}".format(
     datetime_to_nice_string(start_time), datetime_to_nice_string(end_time)))
 print("gen_marker :{}".format(gen_marks(start_time, end_time, 10)))
 print("time_generator :{}".format(time_generator(start_time, end_time, 10)))
 
-external_stylesheets = ['https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css']
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
-cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
-
-creds = {
-    'X-Auth-Token': getenv('OCTAVE_TOKEN', sun_run_settings.octave_token),
-    'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
-}
-
-company = getenv('COMPANY', 'YOUR_COMPANY')
-device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
-
-mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.access_token)
-
-colors = {'background': '#111111', 'text': '#7FDBFF'}
-
-
 update_devices()
 executor = ThreadPoolExecutor(max_workers=1)
-executor.submit(update_devices_every)
+executor.submit(update_devices_every, period=device_update_interval)
 time.sleep(2)  # make sure devices get loaded
-
-app.title = 'mangOH Sun Run'
-app.layout = generate_layout()
 
 
 if __name__ == '__main__':
