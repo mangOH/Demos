@@ -23,14 +23,6 @@ import requests
 # Local modules
 import sun_run_settings
 
-vancouver_timezone = timezone(timedelta(hours=-7))
-end_time = datetime.now(tz=vancouver_timezone)
-start_time = end_time + timedelta(hours=-12)
-
-end_time_ms = int(end_time.timestamp() * 1000)
-start_time_ms = int(start_time.timestamp() * 1000)
-time_delta = 10
-
 
 def time_generator(start_time, end_time, minute_increment):
     minute = (int(start_time.minute / minute_increment) + 1) * minute_increment
@@ -72,30 +64,6 @@ def datetime_to_nice_string(dt):
     return dt.strftime("%Y-%m-%d %H:%M:%S%z")
 
 
-print("start time: {}, end time: {}".format(
-    datetime_to_nice_string(start_time), datetime_to_nice_string(end_time)))
-print("gen_marker :{}".format(gen_marks(start_time, end_time, 10)))
-print("time_generator :{}".format(time_generator(start_time, end_time, 10)))
-
-external_stylesheets = ['https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css']
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
-cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
-
-creds = {
-    'X-Auth-Token': getenv('OCTAVE_TOKEN', sun_run_settings.octave_token),
-    'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
-}
-
-company = getenv('COMPANY', 'YOUR_COMPANY')
-device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
-
-mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.access_token)
-
-colors = {'background': '#111111', 'text': '#7FDBFF'}
-
-
 def update_devices():
     global devices
     print('Updating Devices')
@@ -113,12 +81,6 @@ def update_devices_every(period=device_update_interval):
     while True:
         update_devices()
         time.sleep(period)
-
-
-update_devices()
-executor = ThreadPoolExecutor(max_workers=1)
-executor.submit(update_devices_every)
-time.sleep(2)  # make sure devices get loaded
 
 
 @cache.memoize(timeout=2)
@@ -342,11 +304,6 @@ def generate_layout():
     ])
 
 
-app.layout = generate_layout()
-
-app.title = 'My title'
-
-
 @app.callback(
     Output('live-update-map', 'figure'),
     [Input('time-slider', 'value')],
@@ -557,6 +514,48 @@ def update_airqual(clickData):
     if not clickData: return {}
     device_name = clickData['points'][0]['text']
     return update_airqual_common(device_name)
+
+
+
+vancouver_timezone = timezone(timedelta(hours=-7))
+end_time = datetime.now(tz=vancouver_timezone)
+start_time = end_time + timedelta(hours=-12)
+
+end_time_ms = int(end_time.timestamp() * 1000)
+start_time_ms = int(start_time.timestamp() * 1000)
+time_delta = 10
+
+print("start time: {}, end time: {}".format(
+    datetime_to_nice_string(start_time), datetime_to_nice_string(end_time)))
+print("gen_marker :{}".format(gen_marks(start_time, end_time, 10)))
+print("time_generator :{}".format(time_generator(start_time, end_time, 10)))
+
+external_stylesheets = ['https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
+
+creds = {
+    'X-Auth-Token': getenv('OCTAVE_TOKEN', sun_run_settings.octave_token),
+    'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
+}
+
+company = getenv('COMPANY', 'YOUR_COMPANY')
+device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
+
+mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.access_token)
+
+colors = {'background': '#111111', 'text': '#7FDBFF'}
+
+
+update_devices()
+executor = ThreadPoolExecutor(max_workers=1)
+executor.submit(update_devices_every)
+time.sleep(2)  # make sure devices get loaded
+
+app.title = 'mangOH Sun Run'
+app.layout = generate_layout()
 
 
 if __name__ == '__main__':
