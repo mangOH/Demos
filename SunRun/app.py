@@ -17,6 +17,7 @@ import calendar
 from datetime import datetime
 from datetime import timezone
 from datetime import timedelta
+import sun_run_settings
 
 vancouver_timezone = timezone(timedelta(hours=-7))
 end_time = datetime.now(tz=vancouver_timezone)
@@ -75,14 +76,14 @@ cache = Cache(app.server, config={
 })
 
 creds = {
-    'X-Auth-Token': getenv('TOKEN', 'YOUR_OCTAVE_TOKEN'),
-    'X-Auth-User': getenv('USER', 'YOUR_OCTAVE_USERNAME')
+    'X-Auth-Token': getenv('OCTAVE_TOKEN', sun_run_settings.octave_token),
+    'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
 }
 
 company = getenv('COMPANY', 'YOUR_COMPANY')
 device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
 
-mapbox_access_token = getenv('MAPBOX_ACCESS', 'YOUR_MAPBOX_API_KEY')
+mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.access_token)
 
 colors = {
     'background': '#111111',
@@ -93,7 +94,8 @@ colors = {
 def update_devices():
     global devices
     print('Updating Devices')
-    url = 'https://octave-api.sierrawireless.io/v5.0/{}/device/?filter=tags.dashdemo%3D%3D%22true%22'.format(company)
+    url = 'https://octave-api.sierrawireless.io/v5.0/{}/device/?filter=tags.{}%3D%3D%22true%22'.format(
+        sun_run_settings.ocatve_company, sun_run_settings.octave_device_tag)
     all_devs = [d for d in requests.get(url, headers=creds).json()['body']]
     for d in all_devs:
         print("found device{}".format(d["name"]))
@@ -338,7 +340,7 @@ def update_location_map(slider_timestamp, mapdata):
         'data': get_map_data_from_devices(slider_timestamp),
         'layout': {
             'autosize': True,
-            'title': 'MangOHs tagged with dashdemo: true',
+            'title': 'MangOHs tagged with {}: true'.format(sun_run_settings.octave_device_tag),
             'height': 800,
             'mapbox': {
                 'center': {},
