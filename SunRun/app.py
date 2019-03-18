@@ -14,14 +14,56 @@ from os import getenv
 from time import sleep
 import time
 import calendar
+from datetime import datetime
+from datetime import timezone
+from datetime import timedelta
 
-def unix_seconds_now():
-    now = time.gmtime()
-    print("time now is {}".format(now))
-    return calendar.timegm(now)
-now_s = unix_seconds_now()
-start_time_ms = (now_s - (60 * 60 * 4)) * 1000
-end_time_ms = (now_s ) * 1000
+vancouver_timezone = timezone(timedelta(hours=-7))
+end_time = datetime.now(tz=vancouver_timezone)
+start_time = end_time + timedelta(hours=-12)
+
+end_time_ms = int (end_time.timestamp()*1000)
+start_time_ms = int (start_time.timestamp()*1000)
+time_delta = 10
+
+def time_generator(start_time, end_time, minute_increment):
+    minute = (int(start_time.minute / minute_increment) + 1) * minute_increment
+    t = start_time +  timedelta(
+        minutes=(minute - start_time.minute),
+        seconds=-start_time.second, microseconds=-start_time.microsecond)
+
+    delta = timedelta(minutes=minute_increment)
+    while (t < end_time):
+        yield t
+        t += delta
+
+def gen_marks(start_time, end_time, minute_increment):
+    """
+    Create a marker dict from start/end datetime and a minute increment
+
+    NOTE: 60 % minute_increment should probably == 0
+    """
+    times = time_generator(start_time, end_time, minute_increment)
+    print("times is {}".format(times))
+    return {int(t.timestamp()): '{:02d}:{:02d}'.format(t.hour, t.minute) for t in times}
+
+def utc_timestamp_to_local_datetime(utc_ts_ms):
+    """
+    Create a datetime from a UTC unix timestamp in ms
+    """
+    return datetime.fromtimestamp(utc_ts_ms / 1000.0, vancouver_timezone)
+
+def datetime_to_nice_string(dt):
+    """
+    Produces a nicely formatted datetime stringo
+
+    YYYY-MM-DD hh:mm:ss-hhmm
+    """
+    return dt.strftime("%Y-%m-%d %H:%M:%S%z")
+
+print("start time: {}, end time: {}".format(datetime_to_nice_string(start_time), datetime_to_nice_string(end_time)))
+print("gen_marker :{}".format(gen_marks(start_time, end_time, 10)))
+print("time_generator :{}".format(time_generator(start_time, end_time, 10)))
 
 external_stylesheets = ['https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css']
 
@@ -33,14 +75,14 @@ cache = Cache(app.server, config={
 })
 
 creds = {
-    'X-Auth-Token': getenv('TOKEN', 'yourtoken'),
-    'X-Auth-User': getenv('USER', 'yourusername')
+    'X-Auth-Token': getenv('TOKEN', 'YOUR_OCTAVE_TOKEN'),
+    'X-Auth-User': getenv('USER', 'YOUR_OCTAVE_USERNAME')
 }
 
-company = getenv('COMPANY', 'mango_dev')
+company = getenv('COMPANY', 'YOUR_COMPANY')
 device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
 
-mapbox_access_token = getenv('MAPBOX_ACCESS', 'youraccesstoken')
+mapbox_access_token = getenv('MAPBOX_ACCESS', 'YOUR_MAPBOX_API_KEY')
 
 colors = {
     'background': '#111111',
@@ -76,36 +118,9 @@ def get_events_for_device_stream(device_name, stream_name, my_filter, my_limit):
     print("url test {}".format(url))
     return sorted([e for e in requests.get(url, headers=creds).json()['body']], key=lambda x: x['generatedDate'])
 
-def get_gyro_for_device(device_name):
-    print("processing gyro {}".format(device_name))
-    events = get_events_for_device_stream(device_name, 'gyro', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
-
-    def scatter_for_dimension(dim):
-        return go.Scatter(
-            x=[datetime.fromtimestamp(e['generatedDate']/1000.0) for e in events],
-            #y=[e['elems']['yellowSensor']['gyro'][dim] for e in events],
-            y=[e['elems']['yellowSensor']['gyro'][dim] for e in events],
-            name='Gyro %s' % dim
-        )
-
-    return [scatter_for_dimension(i) for i in ['x', 'y', 'z']]
-
-def get_accel_for_device(device_name):
-    print("processing {}".format(device_name))
-    events = get_events_for_device_stream(device_name, 'accel2c', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
-
-    def scatter_for_dimension(dim):
-        return go.Scatter(
-            x=[datetime.fromtimestamp(e['generatedDate']/1000.0) for e in events],
-            y=[e['elems']['yellowSensor']['accel'][dim] for e in events],
-            name='Accel %s' % dim
-        )
-
-    return [scatter_for_dimension(i) for i in ['x', 'y', 'z']]
-
 def get_battpercent_for_device(device_name):
     print("processing  battery{}".format(device_name))
-    events = get_events_for_device_stream(device_name, 'battper2c', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
+    events = get_events_for_device_stream(device_name, 'battper2c', 'generatedDate>={}&&generatedDate<={}&&CONTAINS=BatteryPercentage'.format(start_time_ms, end_time_ms), 100000)
    
     def scatter_for_batterypercent():
         return go.Scatter(
@@ -118,7 +133,7 @@ def get_battpercent_for_device(device_name):
 
 def get_battcurrent_for_device(device_name):
     print("processing  battery current{}".format(device_name))
-    events = get_events_for_device_stream(device_name, 'batcurrent2c', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
+    events = get_events_for_device_stream(device_name, 'batcurrent2c', 'generatedDate>={}&&generatedDate<={}&&CONTAINS=mA'.format(start_time_ms, end_time_ms), 100000)
    
     def scatter_for_battcurrent():
         return go.Scatter(
@@ -132,7 +147,7 @@ def get_battcurrent_for_device(device_name):
 
 def get_temp_for_device(device_name):
     print("processing  temperature{}".format(device_name))
-    events = get_events_for_device_stream(device_name, 'temp2c', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
+    events = get_events_for_device_stream(device_name, 'temp2c', 'generatedDate>={}&&generatedDate<={}&&CONTAINS=temperature'.format(start_time_ms, end_time_ms), 100000)
    
     def scatter_for_temp():
         return go.Scatter(
@@ -145,7 +160,7 @@ def get_temp_for_device(device_name):
 
 def get_pressure_for_device(device_name):
     print("processing  pressure{}".format(device_name))
-    events = get_events_for_device_stream(device_name, 'pressure2c', 'generatedDate>={}&&generatedDate<={}'.format(start_time_ms, end_time_ms), 100000)
+    events = get_events_for_device_stream(device_name, 'pressure2c', 'generatedDate>={}&&generatedDate<={}&&CONTAIN=pressure'.format(start_time_ms, end_time_ms), 100000)
    
     def scatter_for_pressure():
         return go.Scatter(
@@ -217,7 +232,7 @@ def get_map_history_from_device(device_name):
     print("processing {} with {} events".format(device_name, len(events)))
     for e in events:
         coords = e['elems']['location']['coordinates']
-        ts = coords['ts']
+        ts = utc_timestamp_to_local_datetime(coords['ts'])
         lat = coords['lat']
         lon = coords['lon']
         label = "{}, {} @ {}".format(lat, lon, ts)
@@ -243,12 +258,25 @@ def get_map_history_from_device(device_name):
 def generate_layout():
     
     return html.Div(children=[
+
+        html.H1(children='Vancouver Sun Run mangOH Yellow Tracking'),
+
+        html.Div(children='''
+           Continous tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
+        '''),
+        
+        html.Div(children=[
+            html.A("For more information visit mangoh.io", href='https://mangoh.io', target="_blank")
+            ]),
+
+
         html.Div(className='row', children=[
             html.Div(className='col-12', children=[
                 dcc.Graph(id='live-update-map'),
-                #dcc.RangeSlider(id='time-slider', min=start_time_ms, max=end_time_ms, step=step_time_ms, value=[start_time_ms, end_time_ms], updatemode='mouseup'),
-                dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, value=start_time_ms, updatemode='mouseup'),
-                #dcc.Dropdown(id='drop-down',options=[{'label':d['name']} for d in devices]),  
+                #dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, marks={'{}'.format(gen_marks(start_time,end_time, time_delta))},value=start_time_ms, updatemode='mouseup'),
+              #  dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, marks=gen_marks(start_time,end_time, time_delta),value=start_time_ms, updatemode='mouseup'),
+                dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms,value=start_time_ms, updatemode='mouseup'), 
+               # html.Div(id='live', style={'margin-top': 20}
                 dcc.Interval(
                     id='interval-component',
                     interval=10*1000,
@@ -259,9 +287,6 @@ def generate_layout():
         html.Div(className='row', children=[
             html.Div(className='col-12', children=[
                 dcc.Graph(id='history-location-map'),
-                #dcc.RangeSlider(id='time-slider', min=start_time_ms, max=end_time_ms, step=step_time_ms, value=[start_time_ms, end_time_ms], updatemode='mouseup'),
-                #dcc.Slider(id='time-slider-2', min=start_time_ms, max=end_time_ms, value=start_time_ms, updatemode='mouseup'),
-                #dcc.Dropdown(id='drop-down',options=[{'label':d['name']} for d in devices]),  
            ]),
         ]),
 
@@ -297,6 +322,7 @@ def generate_layout():
 
 app.layout = generate_layout()
 
+app.title = 'My title'
 
 @app.callback(
     Output('live-update-map', 'figure'),
@@ -313,6 +339,7 @@ def update_location_map(slider_timestamp, mapdata):
         'layout': {
             'autosize': True,
             'title': 'MangOHs tagged with dashdemo: true',
+            'height': 800,
             'mapbox': {
                 'center': {},
                 'accesstoken': mapbox_access_token,
@@ -320,7 +347,7 @@ def update_location_map(slider_timestamp, mapdata):
                     'lat': 49.172477,
                     'lon':-123.071298
                 },
-                'zoom': 12,
+                'zoom': 8,
             },
             'uirevision': 1,
             'plot_bgcolor': colors['background'],
