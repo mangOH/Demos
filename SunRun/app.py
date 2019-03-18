@@ -1,23 +1,28 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+# Python built-in modules
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
+from os import getenv
+import time
+import urllib
+
+# Dependencies from pip
+from dash.dependencies import Input, Output, State
+from flask_caching import Cache
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly
 import plotly.graph_objs as go
 import requests
-import urllib
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from dash.dependencies import Input, Output, State
-from datetime import datetime
-from flask_caching import Cache
-from os import getenv
-from time import sleep
-import time
-import calendar
-from datetime import datetime
-from datetime import timezone
-from datetime import timedelta
+
+# Local modules
 import sun_run_settings
+
 
 vancouver_timezone = timezone(timedelta(hours=-7))
 end_time = datetime.now(tz=vancouver_timezone)
@@ -107,12 +112,12 @@ def update_devices():
 def update_devices_every(period=device_update_interval):
     while True:
         update_devices()
-        sleep(period)
+        time.sleep(period)
 
 update_devices()
 executor = ThreadPoolExecutor(max_workers=1)
 executor.submit(update_devices_every)
-sleep(2) # make sure devices get loaded
+time.sleep(2) # make sure devices get loaded
 
 @cache.memoize(timeout=2)
 def get_events_for_device_stream(device_name, stream_name, my_filter, my_limit):
