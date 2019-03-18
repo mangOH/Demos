@@ -351,13 +351,7 @@ def update_location_map(slider_timestamp, mapdata):
             'title': 'MangOHs tagged with {}: true'.format(sun_run_settings.octave_device_tag),
             'height': 800,
             'mapbox': {
-                'center': {},
                 'accesstoken': mapbox_access_token,
-                'center': {
-                    'lat': 49.172477,
-                    'lon': -123.071298
-                },
-                'zoom': 8,
             },
             'uirevision': 1,
             'plot_bgcolor': colors['background'],
@@ -371,9 +365,8 @@ def update_location_map(slider_timestamp, mapdata):
 
     if not mapdata or 'mapbox.center' not in mapdata.keys(): mapdata = {}
     fig['layout']['mapbox']['center'] = mapdata.get('mapbox.center',
-                                                    {'lat': 49.172477,
-                                                     'lon': -123.071298})
-    fig['layout']['mapbox']['zoom'] = mapdata.get('mapbox.zoom', 15)
+                                                    {'lat':  49.281191, 'lon': -123.125991})
+    fig['layout']['mapbox']['zoom'] = mapdata.get('mapbox.zoom', 13)
     fig['layout']['mapbox']['bearing'] = mapdata.get('mapbox.bearing', 0)
     fig['layout']['mapbox']['pitch'] = mapdata.get('mapbox.pitch', 0)
     return fig
