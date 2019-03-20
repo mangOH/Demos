@@ -16,98 +16,13 @@ from flask_caching import Cache
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_bootstrap_components as dbc
 import plotly
 import plotly.graph_objs as go
 import requests
 
 # Local modules
 import sun_run_settings
-
-
-def generate_layout():
-    return html.Div(children=[
-        html.H1(children='Vancouver Sun Run mangOH Yellow Tracking'),
-        html.Div(children='''
-           Continous tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
-        '''),
-        html.Div(children=[
-            html.A("For more information visit mangoh.io",
-                   href='https://mangoh.io',
-                   target="_blank")
-        ]),
-        html.Div(
-            className='row',
-            children=[
-                html.Div(
-                    className='col-12',
-                    children=[
-                        dcc.Graph(id='live-update-map'),
-                        #dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, marks={'{}'.format(gen_marks(start_time,end_time, time_delta))},value=start_time_ms, updatemode='mouseup'),
-                        #  dcc.Slider(id='time-slider', min=start_time_ms, max=end_time_ms, marks=gen_marks(start_time,end_time, time_delta),value=start_time_ms, updatemode='mouseup'),
-                        dcc.Slider(
-                            id='time-slider',
-                            min=start_time_ms,
-                            max=end_time_ms,
-                            value=start_time_ms,
-                            updatemode='mouseup'),
-                        dcc.Interval(
-                            id='interval-component', interval=10 * 1000, n_intervals=0)
-                    ]),
-            ]),
-        html.Div(className='row',
-                 children=[
-                     html.Div(className='col-12', children=[dcc.Graph(id='history-location-map'),
-                                                            ]),
-                 ]),
-        html.Div(
-            className='row',
-            children=[
-                html.Div(className='col-6', children=[dcc.Graph(id='battpercent-time-series')]),
-                html.Div(className='col-6', children=[dcc.Graph(id='battcurrent-time-series')]),
-            ]),
-        html.Div(className='row',
-                 children=[
-                     html.Div(className='col-6', children=[dcc.Graph(id='temp-time-series')]),
-                     html.Div(className='col-6', children=[dcc.Graph(id='pressure-time-series')]),
-                 ]),
-        html.Div(className='row',
-                 children=[
-                     html.Div(className='col-6', children=[dcc.Graph(id='humidity-time-series')]),
-                     html.Div(className='col-6', children=[dcc.Graph(id='airqual-time-series')]),
-                 ]),
-    ])
-
-
-vancouver_utc_delta = timedelta(hours=-7)
-vancouver_timezone = timezone(vancouver_utc_delta)
-#end_time = datetime.now(tz=vancouver_timezone)
-#start_time = end_time + timedelta(hours=-12)
-start_time = datetime(2019, 3, 17, 9, tzinfo=vancouver_timezone)
-end_time = start_time + timedelta(hours=3)
-
-end_time_ms = int(end_time.timestamp() * 1000)
-start_time_ms = int(start_time.timestamp() * 1000)
-time_delta = 10
-
-external_stylesheets = ['https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css']
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-app.title = 'mangOH Sun Run'
-app.layout = generate_layout()
-
-cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
-
-creds = {
-    'X-Auth-Token': getenv('OCTAVE_TOKEN', sun_run_settings.octave_token),
-    'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
-}
-
-company = getenv('COMPANY', sun_run_settings.octave_company)
-device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '60'))
-
-mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.mapbox_access_token)
-
-colors = {'background': '#111111', 'text': '#7FDBFF'}
 
 
 def time_generator(start_time, end_time, minute_increment):
@@ -130,7 +45,78 @@ def gen_marks(start_time, end_time, minute_increment):
     NOTE: 60 % minute_increment should probably == 0
     """
     times = time_generator(start_time, end_time, minute_increment)
-    return {int(t.timestamp()): '{:02d}:{:02d}'.format(t.hour, t.minute) for t in times}
+    marks = {int(t.timestamp()): '{:02d}:{:02d}'.format(t.hour, t.minute) for t in times}
+    app.logger.warning("gen_marks gave: {}".format(marks))
+    return marks
+
+
+def generate_layout():
+    return html.Div([
+        dbc.Row([
+            dbc.Col([
+                dcc.Markdown("""
+# Vancouver Sun Run mangOH Yellow Tracking
+Continuous tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
+For more information, visit [mangoh.io](https://mangoh.io).
+                    """),
+                dcc.Graph(id="live-update-map"),
+                html.Div([
+                    dcc.Slider(
+                        id="time-slider",
+                        min=start_time_ms / 1000,
+                        max=end_time_ms / 1000,
+                        value=start_time_ms / 1000,
+                        marks=gen_marks(start_time, end_time, 15),
+                        updatemode='mouseup'),
+                ], style={"margin-bottom": 50}),
+                dcc.Graph(id='history-location-map'),
+            ]),
+        ]),
+        dbc.Row([
+            dbc.Col([dcc.Graph(id='battpercent-time-series')]),
+            dbc.Col([dcc.Graph(id='battcurrent-time-series')])
+        ]),
+        dbc.Row([
+            dbc.Col([dcc.Graph(id='temp-time-series')]),
+            dbc.Col([dcc.Graph(id='pressure-time-series')])
+        ]),
+        dbc.Row([
+            dbc.Col([dcc.Graph(id='humidity-time-series')]),
+            dbc.Col([dcc.Graph(id='airqual-time-series')])
+        ]),
+    ])
+
+
+vancouver_utc_delta = timedelta(hours=-7)
+vancouver_timezone = timezone(vancouver_utc_delta)
+#end_time = datetime.now(tz=vancouver_timezone)
+#start_time = end_time + timedelta(hours=-12)
+start_time = datetime(2019, 3, 17, 9, tzinfo=vancouver_timezone)
+end_time = start_time + timedelta(hours=3)
+
+end_time_ms = int(end_time.timestamp() * 1000)
+start_time_ms = int(start_time.timestamp() * 1000)
+time_delta = 10
+
+external_stylesheets = [dbc.themes.BOOTSTRAP]
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app.title = 'mangOH Sun Run'
+app.layout = generate_layout()
+
+cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
+
+creds = {
+    'X-Auth-Token': getenv('OCTAVE_TOKEN', sun_run_settings.octave_token),
+    'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
+}
+
+company = getenv('COMPANY', sun_run_settings.octave_company)
+device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '60'))
+
+mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.mapbox_access_token)
+
+colors = {'background': '#111111', 'text': '#7FDBFF'}
 
 
 def utc_timestamp_to_local_datetime(utc_ts_ms):
@@ -252,7 +238,7 @@ def fetch_device_data(device_name):
     return device_data
 
 
-def get_map_data_from_devices(time_stamp):
+def get_map_data_from_devices(timestamp_s):
     text = []
     lat = []
     lon = []
@@ -260,7 +246,7 @@ def get_map_data_from_devices(time_stamp):
         device_name = d['name']
         events = get_events_for_device_stream(
             device_name, 'location',
-            filter="elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}".format(time_stamp, start_time_ms),
+            filter="elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}".format(timestamp_s * 1000, start_time_ms),
             sort="elems.location.coordinates.ts", order="desc", limit=1)
         if events:
             coords = events[0]['elems']['location']['coordinates']
@@ -406,12 +392,12 @@ def selected_runner_callback(clickData):
     device_name = clickData['points'][0]['text'].split(" @ ")[0]
     device_data = fetch_device_data(device_name)
     return (update_location_history(device_data["locations"]),
-            generic_update_scatterplot(device_data["battery_percentages"], "Batt Percent Data", "Battery Percentage"),
-            generic_update_scatterplot(device_data["battery_currents"], "Batt Current Data", "Battery Current Consumption"),
-            generic_update_scatterplot(device_data["temperatures"], "Temp Data", "Ambient Temperature"),
-            generic_update_scatterplot(device_data["pressures"], "Pressure Data", "Atmospheric Pressure"),
-            generic_update_scatterplot(device_data["humidity_readings"], "Humidity Data", "Humidity"),
-            generic_update_scatterplot(device_data["iaq_readings"], "Air Quality Data", "Air Quality"))
+            generic_update_scatterplot(device_data["battery_percentages"], "Battery Percentage", device_name),
+            generic_update_scatterplot(device_data["battery_currents"], "Battery Current Consumption", device_name),
+            generic_update_scatterplot(device_data["temperatures"], "Temperature", device_name),
+            generic_update_scatterplot(device_data["pressures"], "Air Pressure", device_name),
+            generic_update_scatterplot(device_data["humidity_readings"], "Humidity", device_name),
+            generic_update_scatterplot(device_data["iaq_readings"], "Air Quality", device_name))
 
 
 app.logger.warning("start time: {}, end time: {}".format(
