@@ -50,7 +50,6 @@ def generate_layout():
                             max=end_time_ms,
                             value=start_time_ms,
                             updatemode='mouseup'),
-                        # html.Div(id='live', style={'margin-top': 20}
                         dcc.Interval(
                             id='interval-component', interval=10 * 1000, n_intervals=0)
                     ]),
@@ -80,8 +79,10 @@ def generate_layout():
 
 
 vancouver_timezone = timezone(timedelta(hours=-7))
-end_time = datetime.now(tz=vancouver_timezone)
-start_time = end_time + timedelta(hours=-12)
+#end_time = datetime.now(tz=vancouver_timezone)
+#start_time = end_time + timedelta(hours=-12)
+start_time = datetime(2019, 3, 17, 9, tzinfo=vancouver_timezone)
+end_time = start_time + timedelta(hours=3)
 
 end_time_ms = int(end_time.timestamp() * 1000)
 start_time_ms = int(start_time.timestamp() * 1000)
@@ -101,7 +102,7 @@ creds = {
 }
 
 company = getenv('COMPANY', sun_run_settings.octave_company)
-device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '20'))
+device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '60'))
 
 mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.mapbox_access_token)
 
@@ -128,7 +129,6 @@ def gen_marks(start_time, end_time, minute_increment):
     NOTE: 60 % minute_increment should probably == 0
     """
     times = time_generator(start_time, end_time, minute_increment)
-    app.logger.warning("times is {}".format(times))
     return {int(t.timestamp()): '{:02d}:{:02d}'.format(t.hour, t.minute) for t in times}
 
 
@@ -169,7 +169,6 @@ def run_periodically(fn, period=timedelta(seconds=20)):
         time.sleep(period.total_seconds())
 
 
-@cache.memoize(timeout=2)
 def get_events_for_device_stream(device_name, stream_name, my_filter, my_limit):
     url = 'https://octave-api.sierrawireless.io/v5.0/%s/event/?path=/%s/devices/%s/%s&filter=%s&limit=%s' % (
         company, company, device_name, stream_name, urllib.parse.quote(my_filter), my_limit)
@@ -179,59 +178,55 @@ def get_events_for_device_stream(device_name, stream_name, my_filter, my_limit):
         key=lambda x: x['generatedDate'])
 
 
-def create_scatterplot_for_device(device_name, stream_name, graph_name, data_path):
-    events = get_events_for_device_stream(device_name, stream_name,
-                                          "generatedDate>={}&&generatedDate<={}".format(
-                                              start_time_ms, end_time_ms), 100000)
-    x = list()
-    y = list()
+class DataPoint:
+    def __init__(self, generated_ts, data):
+        self.generated_ts = generated_ts
+        self.data = data
+
+
+@cache.memoize(timeout=20)
+def datapoints_from_events(events, data_path):
+    res = list()
     for e in events:
-        x_elem = datetime.fromtimestamp(e['generatedDate'] / 1000.0)
-        y_elem = e
-        bad_data = False
+        ts = e['generatedDate']
+        data = e
         for p in data_path:
-            y_elem = y_elem.get(p)
-            if y_elem is None:
-                bad_data = True
+            data = data.get(p)
+            if data is None:
+                app.logger.debug("Found bad data. Couldn't access path {} in event {}".format("/".join(data_path),  e))
                 break
-        if bad_data:
-            app.logger.warning("Bad data  while creating scatterplot for {}/{}. e={}".format(
-                device_name, stream_name, e))
+        if data is None:
             continue
-        x.append(x_elem)
-        y.append(y_elem)
-
-    return [go.Scatter(x=x, y=y, name=graph_name)]
+        res.append(DataPoint(ts, data))
+    return res
 
 
-def get_battpercent_for_device(device_name):
-    return create_scatterplot_for_device(device_name, "battper2c", "Battery Percentage",
-                                         ["elems", "battery", "BatteryPercentage"])
+def fetch_device_data(device_name):
+    device_data = dict()
+    octave_filter = "generatedDate>={}&&generatedDate<={}".format(start_time_ms, end_time_ms)
 
+    batt_percentage_events = get_events_for_device_stream(device_name, "battper2c", octave_filter, 100000)
+    device_data["battery_percentages"] = datapoints_from_events(batt_percentage_events, ["elems", "battery", "BatteryPercentage"])
 
-def get_battcurrent_for_device(device_name):
-    return create_scatterplot_for_device(device_name, "batcurrent2c", "Battery Current Consumption",
-                                         ["elems", "battery", "mA"])
+    batt_current_events = get_events_for_device_stream(device_name, "batcurrent2c", octave_filter, 100000)
+    device_data["battery_currents"] = datapoints_from_events(batt_current_events, ["elems", "battery", "mA"])
 
+    temperature_events = get_events_for_device_stream(device_name, "temp2c", octave_filter, 100000)
+    device_data["temperatures"] = datapoints_from_events(temperature_events, ["elems", "yellowSensor", "bsec", "temperature"])
 
-def get_temp_for_device(device_name):
-    return create_scatterplot_for_device(device_name, "temp2c", "Ambient Temperature",
-                                         ["elems", "yellowSensor", "bsec", "temperature"])
+    pressure_events = get_events_for_device_stream(device_name, "pressure2c", octave_filter, 100000)
+    device_data["pressures"] = datapoints_from_events(pressure_events, ["elems", "yellowSensor", "bsec", "pressure"])
 
+    humidity_events = get_events_for_device_stream(device_name, "humidity2c", octave_filter, 100000)
+    device_data["humidity_readings"] = datapoints_from_events(humidity_events, ["elems", "yellowSensor", "bsec", "humidity"])
 
-def get_pressure_for_device(device_name):
-    return create_scatterplot_for_device(device_name, "pressure2c", "Atmospheric Pressure",
-                                         ["elems", "yellowSensor", "bsec", "pressure"])
+    iaq_events = get_events_for_device_stream(device_name, "iaq2c", octave_filter, 100000)
+    device_data["iaq_readings"] = datapoints_from_events(iaq_events, ["elems", "yellowSensor", "bsec", "iaqValue"])
 
+    location_events = get_events_for_device_stream(device_name, "location", octave_filter, 100000)
+    device_data["locations"] = datapoints_from_events(location_events, ["elems", "location", "coordinates"])
 
-def get_humidity_for_device(device_name):
-    return create_scatterplot_for_device(device_name, "humidity2c", "Humidity",
-                                         ["elems", "yellowSensor", "bsec", "humidity"])
-
-
-def get_airqual_for_device(device_name):
-    return create_scatterplot_for_device(device_name, "iaq2c", "Air Quality",
-                                         ["elems", "yellowSensor", "bsec", "iaqValue"])
+    return device_data
 
 
 def get_map_data_from_devices(time_stamp):
@@ -247,8 +242,7 @@ def get_map_data_from_devices(time_stamp):
         if len(events) >= 1:
             coords = events[-1]['elems']['location']['coordinates']
             ts = coords['ts']
-            #            text.append('{} at {}'.format(device_name, ts))
-            text.append('{}'.format(device_name))
+            text.append(device_name)
             lat.append(coords['lat'])
             lon.append(coords['lon'])
     return [
@@ -262,20 +256,14 @@ def get_map_data_from_devices(time_stamp):
     ]
 
 
-def get_map_history_from_device(device_name):
+def create_scattermapbox_data(locations):
     labels = []
     latitudes = []
     longitudes = []
-
-    events = get_events_for_device_stream(
-        device_name, 'location',
-        'elems.location.coordinates.ts>={} && elems.location.coordinates.ts<={}'.format(
-            start_time_ms, end_time_ms), 10000)
-    for e in events:
-        coords = e['elems']['location']['coordinates']
-        ts = utc_timestamp_to_local_datetime(coords['ts'])
-        lat = coords['lat']
-        lon = coords['lon']
+    for l in locations:
+        ts = utc_timestamp_to_local_datetime(l.generated_ts)
+        lat = l.data["lat"]
+        lon = l.data["lon"]
         label = "{}, {} @ {}".format(lat, lon, ts)
         labels.append(label)
         latitudes.append(lat)
@@ -287,7 +275,6 @@ def get_map_history_from_device(device_name):
             lat=latitudes,
             text=labels,
             mode='lines+markers',
-            #marker = dict(size = 8)
             marker={'size': 15,
                     'opacity': 0.5,
                     'line': {
@@ -300,15 +287,13 @@ def get_map_history_from_device(device_name):
 @app.callback(
     Output('live-update-map', 'figure'),
     [Input('time-slider', 'value')],
-    #     Input('drop-down', 'value')],
     [State('live-update-map', 'relayoutData')])
-#def update_location_map(n, mapdata):
 def update_location_map(slider_timestamp, mapdata):
     fig = {
         'data': get_map_data_from_devices(slider_timestamp),
         'layout': {
             'autosize': True,
-            'title': 'MangOHs tagged with {}: true'.format(sun_run_settings.octave_device_tag),
+            'title': 'Runners Carrying mangOH Yellow',
             'height': 800,
             'mapbox': {
                 'accesstoken': mapbox_access_token,
@@ -333,21 +318,13 @@ def update_location_map(slider_timestamp, mapdata):
     return fig
 
 
-@app.callback(
-    Output('history-location-map', 'figure'), [Input('live-update-map', 'clickData')],
-    [State('history-location-map', 'relayoutData')])
-#def update_location_map(n, mapdata):
-def update_location_history(clickData, mapdata):
-    if not clickData: return {}
-    device_name = clickData['points'][0]['text']
-    location_data = get_map_history_from_device(device_name)
+def update_location_history(locations):
     fig = {
-        'data': location_data,
+        'data': create_scattermapbox_data(locations),
         'layout': {
             'autosize': True,
             'title': 'Location History',
             'mapbox': {
-                'center': {},
                 'accesstoken': sun_run_settings.mapbox_access_token,
                 'center': {
                     'lat': 49.172477,
@@ -366,12 +343,20 @@ def update_location_history(clickData, mapdata):
     return fig
 
 
-def update_batterypercent_common(device_name):
-    battpercent_data = get_battpercent_for_device(device_name)
+def create_scatterplot(data_points, title):
+    x = list()
+    y = list()
+    for d in data_points:
+        x.append(datetime.fromtimestamp(d.generated_ts / 1000.0))
+        y.append(d.data)
+    return [go.Scatter(x=x, y=y, name=title)]
+
+
+def generic_update_scatterplot(datapoints, graph_title_prefix, data_description):
     return {
-        'data': battpercent_data,
+        'data': create_scatterplot(datapoints, data_description),
         'layout': {
-            'title': 'Batt Percent Data for "%s"' % device_name,
+            'title': "{} for {}".format(graph_title_prefix, data_description),
             'plot_bgcolor': colors['background'],
             'paper_bgcolor': colors['background'],
             'font': {
@@ -381,127 +366,31 @@ def update_batterypercent_common(device_name):
     }
 
 
-@app.callback(Output('battpercent-time-series', 'figure'), [Input('live-update-map', 'clickData')])
-def update_batterypercent(clickData):
-    if not clickData: return {}
+@app.callback(
+    [Output('history-location-map', 'figure'),
+     Output('battpercent-time-series', 'figure'),
+     Output('battcurrent-time-series', 'figure'),
+     Output('temp-time-series', 'figure'),
+     Output('pressure-time-series', 'figure'),
+     Output('humidity-time-series', 'figure'),
+     Output('airqual-time-series', 'figure')],
+    [Input('live-update-map', 'clickData')])
+def selected_runner_callback(clickData):
+    app.logger.debug("In selected_runner_callback({})".format(clickData))
+    if not clickData: return ({}, {}, {}, {}, {}, {}, {})
     device_name = clickData['points'][0]['text']
-    return update_batterypercent_common(device_name)
-
-
-def update_batterycurrent_common(device_name):
-    battcurrent_data = get_battcurrent_for_device(device_name)
-    return {
-        'data': battcurrent_data,
-        'layout': {
-            'title': 'Batt Curent  Data for "%s"' % device_name,
-            'plot_bgcolor': colors['background'],
-            'paper_bgcolor': colors['background'],
-            'font': {
-                'color': colors['text']
-            }
-        }
-    }
-
-
-@app.callback(Output('battcurrent-time-series', 'figure'), [Input('live-update-map', 'clickData')])
-def update_batterycurrent(clickData):
-    if not clickData: return {}
-    device_name = clickData['points'][0]['text']
-    return update_batterycurrent_common(device_name)
-
-
-def update_temp_common(device_name):
-    temp_data = get_temp_for_device(device_name)
-    return {
-        'data': temp_data,
-        'layout': {
-            'title': 'Temp  Data for "%s"' % device_name,
-            'plot_bgcolor': colors['background'],
-            'paper_bgcolor': colors['background'],
-            'font': {
-                'color': colors['text']
-            }
-        }
-    }
-
-
-@app.callback(Output('temp-time-series', 'figure'), [Input('live-update-map', 'clickData')])
-def update_temp(clickData):
-    if not clickData: return {}
-    device_name = clickData['points'][0]['text']
-    return update_temp_common(device_name)
-
-
-def update_pressure_common(device_name):
-    pressure_data = get_pressure_for_device(device_name)
-    return {
-        'data': pressure_data,
-        'layout': {
-            'title': 'Pressure  Data for "%s"' % device_name,
-            'plot_bgcolor': colors['background'],
-            'paper_bgcolor': colors['background'],
-            'font': {
-                'color': colors['text']
-            }
-        }
-    }
-
-
-@app.callback(Output('pressure-time-series', 'figure'), [Input('live-update-map', 'clickData')])
-def update_pressure(clickData):
-    if not clickData: return {}
-    device_name = clickData['points'][0]['text']
-    return update_pressure_common(device_name)
-
-
-def update_humidity_common(device_name):
-    humidity_data = get_humidity_for_device(device_name)
-    return {
-        'data': humidity_data,
-        'layout': {
-            'title': 'Humidity  Data for "%s"' % device_name,
-            'plot_bgcolor': colors['background'],
-            'paper_bgcolor': colors['background'],
-            'font': {
-                'color': colors['text']
-            }
-        }
-    }
-
-
-@app.callback(Output('humidity-time-series', 'figure'), [Input('live-update-map', 'clickData')])
-def update_humidity(clickData):
-    if not clickData: return {}
-    device_name = clickData['points'][0]['text']
-    return update_humidity_common(device_name)
-
-
-def update_airqual_common(device_name):
-    airqual_data = get_airqual_for_device(device_name)
-    return {
-        'data': airqual_data,
-        'layout': {
-            'title': 'Air Quality  Data for "%s"' % device_name,
-            'plot_bgcolor': colors['background'],
-            'paper_bgcolor': colors['background'],
-            'font': {
-                'color': colors['text']
-            }
-        }
-    }
-
-
-@app.callback(Output('airqual-time-series', 'figure'), [Input('live-update-map', 'clickData')])
-def update_airqual(clickData):
-    if not clickData: return {}
-    device_name = clickData['points'][0]['text']
-    return update_airqual_common(device_name)
+    device_data = fetch_device_data(device_name)
+    return (update_location_history(device_data["locations"]),
+            generic_update_scatterplot(device_data["battery_percentages"], "Batt Percent Data", "Battery Percentage"),
+            generic_update_scatterplot(device_data["battery_currents"], "Batt Current Data", "Battery Current Consumption"),
+            generic_update_scatterplot(device_data["temperatures"], "Temp Data", "Ambient Temperature"),
+            generic_update_scatterplot(device_data["pressures"], "Pressure Data", "Atmospheric Pressure"),
+            generic_update_scatterplot(device_data["humidity_readings"], "Humidity Data", "Humidity"),
+            generic_update_scatterplot(device_data["iaq_readings"], "Air Quality Data", "Air Quality"))
 
 
 app.logger.warning("start time: {}, end time: {}".format(
     datetime_to_nice_string(start_time), datetime_to_nice_string(end_time)))
-app.logger.warning("gen_marker :{}".format(gen_marks(start_time, end_time, 10)))
-app.logger.warning("time_generator :{}".format(time_generator(start_time, end_time, 10)))
 
 devices = None
 executor = ThreadPoolExecutor(max_workers=1)
