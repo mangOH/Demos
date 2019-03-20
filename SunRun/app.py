@@ -78,7 +78,8 @@ def generate_layout():
     ])
 
 
-vancouver_timezone = timezone(timedelta(hours=-7))
+vancouver_utc_delta = timedelta(hours=-7)
+vancouver_timezone = timezone(vancouver_utc_delta)
 #end_time = datetime.now(tz=vancouver_timezone)
 #start_time = end_time + timedelta(hours=-12)
 start_time = datetime(2019, 3, 17, 9, tzinfo=vancouver_timezone)
@@ -139,15 +140,26 @@ def utc_timestamp_to_local_datetime(utc_ts_ms):
     return datetime.fromtimestamp(utc_ts_ms / 1000.0, vancouver_timezone)
 
 
-def datetime_to_nice_string(dt):
+def datetime_to_datetime_string(dt):
     """
-    Produces a nicely formatted datetime stringo
+    Produces a nicely formatted datetime string
 
     YYYY-MM-DD hh:mm:ss-hhmm
     """
     return dt.strftime("%Y-%m-%d %H:%M:%S%z")
 
+def datetime_to_time_string(dt):
+    """
+    Produces a nicely formatted time string
 
+    hh:mm:ss
+    """
+    return dt.strftime("%H:%M:%S")
+
+
+# TODO: Currently, only the "name" property of the devices in the devices list
+# is used to construct a query for the map data. As a result, "devices" could
+# be a much smaller/simpler object. Really, it just needs to be device_names.
 def update_devices():
     global devices
     url = 'https://octave-api.sierrawireless.io/v5.0/{}/device/?filter=tags.{}%3D%3D%22true%22'.format(
@@ -157,7 +169,7 @@ def update_devices():
         if 'location' not in d.keys():
             d.update(location={'lat': 49.172477, 'lon': -123.071298})
     devices = all_devs
-    app.logger.warning("Updating devices to: {}".format([d["name"] for d in devices]))
+    app.logger.warning("Updating devices to: {}".format(", ".join([d["name"] for d in devices])))
 
 
 def run_periodically(fn, period=timedelta(seconds=20)):
@@ -169,13 +181,24 @@ def run_periodically(fn, period=timedelta(seconds=20)):
         time.sleep(period.total_seconds())
 
 
-def get_events_for_device_stream(device_name, stream_name, my_filter, my_limit):
-    url = 'https://octave-api.sierrawireless.io/v5.0/%s/event/?path=/%s/devices/%s/%s&filter=%s&limit=%s' % (
-        company, company, device_name, stream_name, urllib.parse.quote(my_filter), my_limit)
+def get_events_for_device_stream(device_name, stream_name, filter=None, sort=None, order=None, limit=None):
+    """
+    Get the events in the device stream according to the query parameters
+    """
+    url = "https://octave-api.sierrawireless.io/v5.0/{}/event/?path=/{}/devices/{}/{}".format(
+        company, company, device_name, stream_name)
+    if filter is not None:
+        url = "{}&filter={}".format(url, urllib.parse.quote(filter))
+    if sort is not None:
+        url = "{}&sort={}".format(url, sort)
+    if order is not None:
+        if order != "asc" and order != "desc":
+            raise Exception("Invalid order parameter: {}".format(order))
+        url = "{}&order={}".format(url, order)
+    if limit is not None:
+        url = "{}&limit={}".format(url, limit)
     app.logger.warning("get_events_for_device_stream: {}".format(url))
-    return sorted(
-        [e for e in requests.get(url, headers=creds).json()['body']],
-        key=lambda x: x['generatedDate'])
+    return requests.get(url, headers=creds).json()['body']
 
 
 class DataPoint:
@@ -205,25 +228,25 @@ def fetch_device_data(device_name):
     device_data = dict()
     octave_filter = "generatedDate>={}&&generatedDate<={}".format(start_time_ms, end_time_ms)
 
-    batt_percentage_events = get_events_for_device_stream(device_name, "battper2c", octave_filter, 100000)
+    batt_percentage_events = get_events_for_device_stream(device_name, "battper2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
     device_data["battery_percentages"] = datapoints_from_events(batt_percentage_events, ["elems", "battery", "BatteryPercentage"])
 
-    batt_current_events = get_events_for_device_stream(device_name, "batcurrent2c", octave_filter, 100000)
+    batt_current_events = get_events_for_device_stream(device_name, "batcurrent2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
     device_data["battery_currents"] = datapoints_from_events(batt_current_events, ["elems", "battery", "mA"])
 
-    temperature_events = get_events_for_device_stream(device_name, "temp2c", octave_filter, 100000)
+    temperature_events = get_events_for_device_stream(device_name, "temp2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
     device_data["temperatures"] = datapoints_from_events(temperature_events, ["elems", "yellowSensor", "bsec", "temperature"])
 
-    pressure_events = get_events_for_device_stream(device_name, "pressure2c", octave_filter, 100000)
+    pressure_events = get_events_for_device_stream(device_name, "pressure2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
     device_data["pressures"] = datapoints_from_events(pressure_events, ["elems", "yellowSensor", "bsec", "pressure"])
 
-    humidity_events = get_events_for_device_stream(device_name, "humidity2c", octave_filter, 100000)
+    humidity_events = get_events_for_device_stream(device_name, "humidity2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
     device_data["humidity_readings"] = datapoints_from_events(humidity_events, ["elems", "yellowSensor", "bsec", "humidity"])
 
-    iaq_events = get_events_for_device_stream(device_name, "iaq2c", octave_filter, 100000)
+    iaq_events = get_events_for_device_stream(device_name, "iaq2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
     device_data["iaq_readings"] = datapoints_from_events(iaq_events, ["elems", "yellowSensor", "bsec", "iaqValue"])
 
-    location_events = get_events_for_device_stream(device_name, "location", octave_filter, 100000)
+    location_events = get_events_for_device_stream(device_name, "location", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
     device_data["locations"] = datapoints_from_events(location_events, ["elems", "location", "coordinates"])
 
     return device_data
@@ -237,12 +260,12 @@ def get_map_data_from_devices(time_stamp):
         device_name = d['name']
         events = get_events_for_device_stream(
             device_name, 'location',
-            'elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}'.format(
-                time_stamp, start_time_ms), 1000)
-        if len(events) >= 1:
-            coords = events[-1]['elems']['location']['coordinates']
-            ts = coords['ts']
-            text.append(device_name)
+            filter="elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}".format(time_stamp, start_time_ms),
+            sort="elems.location.coordinates.ts", order="desc", limit=1)
+        if events:
+            coords = events[0]['elems']['location']['coordinates']
+            dt = utc_timestamp_to_local_datetime(coords['ts'])
+            text.append("{} @ {}".format(device_name, datetime_to_time_string(dt)))
             lat.append(coords['lat'])
             lon.append(coords['lon'])
     return [
@@ -264,7 +287,7 @@ def create_scattermapbox_data(locations):
         ts = utc_timestamp_to_local_datetime(l.generated_ts)
         lat = l.data["lat"]
         lon = l.data["lon"]
-        label = "{}, {} @ {}".format(lat, lon, ts)
+        label = datetime_to_time_string(ts)
         labels.append(label)
         latitudes.append(lat)
         longitudes.append(lon)
@@ -347,7 +370,9 @@ def create_scatterplot(data_points, title):
     x = list()
     y = list()
     for d in data_points:
-        x.append(datetime.fromtimestamp(d.generated_ts / 1000.0))
+        # It seems that the graphs will show the UTC time if the datetime object is timezone aware,
+        # so just construct a naive object which has been adjusted to Vancouver time.
+        x.append(datetime.fromtimestamp(d.generated_ts / 1000.0) + vancouver_utc_delta)
         y.append(d.data)
     return [go.Scatter(x=x, y=y, name=title)]
 
@@ -378,7 +403,7 @@ def generic_update_scatterplot(datapoints, graph_title_prefix, data_description)
 def selected_runner_callback(clickData):
     app.logger.debug("In selected_runner_callback({})".format(clickData))
     if not clickData: return ({}, {}, {}, {}, {}, {}, {})
-    device_name = clickData['points'][0]['text']
+    device_name = clickData['points'][0]['text'].split(" @ ")[0]
     device_data = fetch_device_data(device_name)
     return (update_location_history(device_data["locations"]),
             generic_update_scatterplot(device_data["battery_percentages"], "Batt Percent Data", "Battery Percentage"),
@@ -390,7 +415,7 @@ def selected_runner_callback(clickData):
 
 
 app.logger.warning("start time: {}, end time: {}".format(
-    datetime_to_nice_string(start_time), datetime_to_nice_string(end_time)))
+    datetime_to_datetime_string(start_time), datetime_to_datetime_string(end_time)))
 
 devices = None
 executor = ThreadPoolExecutor(max_workers=1)
