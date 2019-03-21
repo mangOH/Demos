@@ -20,6 +20,7 @@ import dash_bootstrap_components as dbc
 import plotly
 import plotly.graph_objs as go
 import requests
+import flask
 
 # Local modules
 import sun_run_settings
@@ -100,7 +101,8 @@ time_delta = 10
 
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+server = flask.Flask(__name__)
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets, server=server)
 app.title = 'mangOH Sun Run'
 app.layout = generate_layout()
 
