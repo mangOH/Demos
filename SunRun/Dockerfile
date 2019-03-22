@@ -12,4 +12,4 @@ EXPOSE 8050
 #CMD ["python", "app.py"]
 
 # Use gunicorn for deployment
-CMD gunicorn -w 2 -b 0.0.0.0:8050 -t 100000 --max-requests 20 --reload app:server
+CMD gunicorn -w 2 -b 0.0.0.0:8050 -t 100000 --max-requests 20 --access-logfile - --reload app:server

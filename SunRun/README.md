@@ -43,15 +43,13 @@ development.
 ### Deployment
 Follow the instructions below assuming that you have already followed the "VPS
 Setup" instructions.
-1. `dev$ docker save mangoh_sun_run:0.0.1 | xz mangoh_sun_run-0.0.1.tar.xz`
-1. `dev$ scp mangoh_sun_run-0.0.1.tar.xz root@iotlabs.mangoh.io:~/`
-1. `dev$ scp sun_run_settings.py root@iotlabs.mangoh.io:~/`
-1. `dev$ scp mangoh-sun-run.service root@iotlabs.mangoh.io:/etc/systemd/system/`
+1. `dev$ docker save mangoh_sun_run:0.0.1 | xz -0 > mangoh_sun_run-0.0.1.tar.xz`
+1. `dev$ scp mangoh_sun_run-0.0.1.tar.xz sun_run_settings.py nginx.conf root@iotlabs.mangoh.io:~/`
+1. `dev$ scp mangoh-sun-run.service nginx-reverse-proxy.service root@iotlabs.mangoh.io:/etc/systemd/system/`
 1. `dev$ ssh root@iotlabs.mangoh.io`
 1. `iotlabs# xzcat mangoh_sun_run-0.0.1.tar.xz | docker load`
 1. `iotlabs# docker tag mangoh_sun_run:0.0.1 mangoh_sun_run:latest`
-1. `iotlabs# systemctl stop mangoh-sun-run.service`
 1. `iotlabs# systemctl daemon-reload`
-1. `iotlabs# systemctl enable mangoh-sun-run.service`
+1. `iotlabs# systemctl stop nginx-reverse-proxy.service mangoh-sun-run.service`
+1. `iotlabs# systemctl enable mangoh-sun-run.service nginx-reverse-proxy.service`
 1. `iotlabs# systemctl start mangoh-sun-run.service`
-

@@ -8,9 +8,10 @@ Requires=docker.socket
 
 [Service]
 Restart=always
-ExecStartPre=/bin/bash -c "/usr/bin/docker container inspect mangoh_sun_run 2> /dev/null || /usr/bin/docker run -d --name mangoh_sun_run -p 80:8050 -v /root/sun_run_settings.py:/app/sun_run_settings.py mangoh_sun_run"
-ExecStart=/usr/bin/docker start -a mangoh_sun_run
-ExecStop=/usr/bin/docker stop -t 10 mangoh_sun_run
+ExecStartPre=-/usr/bin/docker network create iotlabs
+ExecStartPre=/bin/bash -c "/usr/bin/docker container inspect mangoh-sun-run 2> /dev/null || /usr/bin/docker run -d --name mangoh-sun-run --net iotlabs -v /root/sun_run_settings.py:/app/sun_run_settings.py mangoh_sun_run"
+ExecStart=/usr/bin/docker start -a mangoh-sun-run
+ExecStop=/usr/bin/docker stop -t 10 mangoh-sun-run
 
 [Install]
 WantedBy=multi-user.target

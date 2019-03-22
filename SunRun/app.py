@@ -102,7 +102,12 @@ time_delta = 10
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 
 server = flask.Flask(__name__)
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets, server=server)
+
+pathname_params = dict()
+if sun_run_settings.hosting_path is not None:
+    pathname_params["routes_pathname_prefix"] = "/"
+    pathname_params["requests_pathname_prefix"] = "/{}/".format(sun_run_settings.hosting_path)
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets, server=server, **pathname_params)
 app.title = 'mangOH Sun Run'
 app.layout = generate_layout()
 
@@ -412,4 +417,4 @@ while (devices is None):
     time.sleep(2)  # make sure devices get loaded
 
 if __name__ == '__main__':
-    app.run_server(host='0.0.0.0', debug=True)
+    app.run_server(host='0.0.0.0', port=8050, debug=True)

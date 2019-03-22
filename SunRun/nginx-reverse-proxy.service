@@ -1,0 +1,17 @@
+# systemd service to run nginx as a reverse proxy in a Docker container
+
+[Unit]
+Description=Nginx Reverse Proxy Docker Container
+After=docker.service
+Wants=network-online.target docker.socket
+Requires=docker.socket mangoh-sun-run.service
+
+[Service]
+Restart=always
+ExecStartPre=-/usr/bin/docker network create iotlabs
+ExecStartPre=/bin/bash -c "/usr/bin/docker container inspect nginx-reverse-proxy 2> /dev/null || /usr/bin/docker run -d --name nginx-reverse-proxy --net iotlabs -p 80:80 -v /root/nginx.conf:/etc/nginx/conf.d/default.conf nginx:stable-alpine"
+ExecStart=/usr/bin/docker start -a nginx-reverse-proxy
+ExecStop=/usr/bin/docker stop -t 10 nginx-reverse-proxy
+
+[Install]
+WantedBy=multi-user.target
