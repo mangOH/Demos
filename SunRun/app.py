@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
-from os import getenv
 import time
 import urllib
 
@@ -114,14 +113,11 @@ app.layout = generate_layout()
 cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
 
 creds = {
-    'X-Auth-Token': getenv('OCTAVE_TOKEN', sun_run_settings.octave_token),
-    'X-Auth-User': getenv('OCTAVE_USER', sun_run_settings.octave_user)
+    'X-Auth-Token': sun_run_settings.octave_token,
+    'X-Auth-User': sun_run_settings.octave_user
 }
 
-company = getenv('COMPANY', sun_run_settings.octave_company)
-device_update_interval = int(getenv('DEVICE_UPDATE_INTERVAL', '60'))
-
-mapbox_access_token = getenv('MAPBOX_ACCESS', sun_run_settings.mapbox_access_token)
+device_update_interval = 60
 
 colors = {'background': '#111111', 'text': '#7FDBFF'}
 
@@ -179,7 +175,7 @@ def get_events_for_device_stream(device_name, stream_name, filter=None, sort=Non
     Get the events in the device stream according to the query parameters
     """
     url = "https://octave-api.sierrawireless.io/v5.0/{}/event/?path=/{}/devices/{}/{}".format(
-        company, company, device_name, stream_name)
+        sun_run_settings.octave_company, sun_run_settings.octave_company, device_name, stream_name)
     if filter is not None:
         url = "{}&filter={}".format(url, urllib.parse.quote(filter))
     if sort is not None:
@@ -312,7 +308,7 @@ def update_location_map(slider_timestamp, mapdata):
             'title': 'Runners Carrying mangOH Yellow',
             'height': 800,
             'mapbox': {
-                'accesstoken': mapbox_access_token,
+                'accesstoken': sun_run_settings.mapbox_access_token,
             },
             'uirevision': 1,
             'plot_bgcolor': colors['background'],

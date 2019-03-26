@@ -1,17 +1,4 @@
-
-## Setup
-
-1. setup python virtualenv and activate it
-2. `pip install -r requirements.txt`
-3. `python app.py`
-
-## Environment vars
-
-* `TOKEN` - Octave Read only token
-* `USER` - Octave User (will not be needed long term)
-* `COMPANY` - Octave company to use
-* `MAPBOX_ACCESS` - mapbox access token
-
+# mangOH Sun Run Tracker
 
 ## VPS Setup
 Follow this list of instructions to prepare a VPS with a bare Debian 9 (stretch)
@@ -42,7 +29,8 @@ development.
 
 ### Deployment
 Follow the instructions below assuming that you have already followed the "VPS
-Setup" instructions.
+Setup" instructions. Adjust the commands depending on which version of the
+docker image you have built.
 1. `dev$ docker save mangoh_sun_run:0.0.1 | xz -0 > mangoh_sun_run-0.0.1.tar.xz`
 1. `dev$ scp mangoh_sun_run-0.0.1.tar.xz sun_run_settings.py nginx.conf root@iotlabs.mangoh.io:~/`
 1. `dev$ scp mangoh-sun-run.service nginx-reverse-proxy.service root@iotlabs.mangoh.io:/etc/systemd/system/`
