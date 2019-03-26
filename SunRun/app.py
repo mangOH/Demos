@@ -68,7 +68,8 @@ For more information, visit [mangoh.io](https://mangoh.io).
                         value=start_time_ms / 1000,
                         marks=gen_marks(start_time, end_time, 15),
                         updatemode='mouseup'),
-                ], style={"margin-bottom": 50}),
+                ],
+                         style={"margin-bottom": 50}),
                 dcc.Graph(id='history-location-map'),
             ]),
         ]),
@@ -106,16 +107,14 @@ pathname_params = dict()
 if sun_run_settings.hosting_path is not None:
     pathname_params["routes_pathname_prefix"] = "/"
     pathname_params["requests_pathname_prefix"] = "/{}/".format(sun_run_settings.hosting_path)
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets, server=server, **pathname_params)
+app = dash.Dash(
+    __name__, external_stylesheets=external_stylesheets, server=server, **pathname_params)
 app.title = 'mangOH Sun Run'
 app.layout = generate_layout()
 
 cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
 
-creds = {
-    'X-Auth-Token': sun_run_settings.octave_token,
-    'X-Auth-User': sun_run_settings.octave_user
-}
+creds = {'X-Auth-Token': sun_run_settings.octave_token, 'X-Auth-User': sun_run_settings.octave_user}
 
 device_update_interval = 60
 
@@ -136,6 +135,7 @@ def datetime_to_datetime_string(dt):
     YYYY-MM-DD hh:mm:ss-hhmm
     """
     return dt.strftime("%Y-%m-%d %H:%M:%S%z")
+
 
 def datetime_to_time_string(dt):
     """
@@ -170,7 +170,12 @@ def run_periodically(fn, period=timedelta(seconds=20)):
         time.sleep(period.total_seconds())
 
 
-def get_events_for_device_stream(device_name, stream_name, filter=None, sort=None, order=None, limit=None):
+def get_events_for_device_stream(device_name,
+                                 stream_name,
+                                 filter=None,
+                                 sort=None,
+                                 order=None,
+                                 limit=None):
     """
     Get the events in the device stream according to the query parameters
     """
@@ -205,7 +210,8 @@ def datapoints_from_events(events, data_path):
         for p in data_path:
             data = data.get(p)
             if data is None:
-                app.logger.debug("Found bad data. Couldn't access path {} in event {}".format("/".join(data_path),  e))
+                app.logger.debug("Found bad data. Couldn't access path {} in event {}".format(
+                    "/".join(data_path), e))
                 break
         if data is None:
             continue
@@ -217,26 +223,70 @@ def fetch_device_data(device_name):
     device_data = dict()
     octave_filter = "generatedDate>={}&&generatedDate<={}".format(start_time_ms, end_time_ms)
 
-    batt_percentage_events = get_events_for_device_stream(device_name, "battper2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
-    device_data["battery_percentages"] = datapoints_from_events(batt_percentage_events, ["elems", "battery", "BatteryPercentage"])
+    batt_percentage_events = get_events_for_device_stream(
+        device_name,
+        "battper2c",
+        filter=octave_filter,
+        sort="GeneratedDate",
+        order="asc",
+        limit=100000)
+    device_data["battery_percentages"] = datapoints_from_events(
+        batt_percentage_events, ["elems", "battery", "BatteryPercentage"])
 
-    batt_current_events = get_events_for_device_stream(device_name, "batcurrent2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
-    device_data["battery_currents"] = datapoints_from_events(batt_current_events, ["elems", "battery", "mA"])
+    batt_current_events = get_events_for_device_stream(
+        device_name,
+        "batcurrent2c",
+        filter=octave_filter,
+        sort="GeneratedDate",
+        order="asc",
+        limit=100000)
+    device_data["battery_currents"] = datapoints_from_events(batt_current_events,
+                                                             ["elems", "battery", "mA"])
 
-    temperature_events = get_events_for_device_stream(device_name, "temp2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
-    device_data["temperatures"] = datapoints_from_events(temperature_events, ["elems", "yellowSensor", "bsec", "temperature"])
+    temperature_events = get_events_for_device_stream(
+        device_name,
+        "temp2c",
+        filter=octave_filter,
+        sort="GeneratedDate",
+        order="asc",
+        limit=100000)
+    device_data["temperatures"] = datapoints_from_events(
+        temperature_events, ["elems", "yellowSensor", "bsec", "temperature"])
 
-    pressure_events = get_events_for_device_stream(device_name, "pressure2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
-    device_data["pressures"] = datapoints_from_events(pressure_events, ["elems", "yellowSensor", "bsec", "pressure"])
+    pressure_events = get_events_for_device_stream(
+        device_name,
+        "pressure2c",
+        filter=octave_filter,
+        sort="GeneratedDate",
+        order="asc",
+        limit=100000)
+    device_data["pressures"] = datapoints_from_events(pressure_events,
+                                                      ["elems", "yellowSensor", "bsec", "pressure"])
 
-    humidity_events = get_events_for_device_stream(device_name, "humidity2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
-    device_data["humidity_readings"] = datapoints_from_events(humidity_events, ["elems", "yellowSensor", "bsec", "humidity"])
+    humidity_events = get_events_for_device_stream(
+        device_name,
+        "humidity2c",
+        filter=octave_filter,
+        sort="GeneratedDate",
+        order="asc",
+        limit=100000)
+    device_data["humidity_readings"] = datapoints_from_events(
+        humidity_events, ["elems", "yellowSensor", "bsec", "humidity"])
 
-    iaq_events = get_events_for_device_stream(device_name, "iaq2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
-    device_data["iaq_readings"] = datapoints_from_events(iaq_events, ["elems", "yellowSensor", "bsec", "iaqValue"])
+    iaq_events = get_events_for_device_stream(
+        device_name, "iaq2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
+    device_data["iaq_readings"] = datapoints_from_events(
+        iaq_events, ["elems", "yellowSensor", "bsec", "iaqValue"])
 
-    location_events = get_events_for_device_stream(device_name, "location", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
-    device_data["locations"] = datapoints_from_events(location_events, ["elems", "location", "coordinates"])
+    location_events = get_events_for_device_stream(
+        device_name,
+        "location",
+        filter=octave_filter,
+        sort="GeneratedDate",
+        order="asc",
+        limit=100000)
+    device_data["locations"] = datapoints_from_events(location_events,
+                                                      ["elems", "location", "coordinates"])
 
     return device_data
 
@@ -248,9 +298,13 @@ def get_map_data_from_devices(timestamp_s):
     for d in devices:
         device_name = d['name']
         events = get_events_for_device_stream(
-            device_name, 'location',
-            filter="elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}".format(timestamp_s * 1000, start_time_ms),
-            sort="elems.location.coordinates.ts", order="desc", limit=1)
+            device_name,
+            'location',
+            filter="elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}".format(
+                timestamp_s * 1000, start_time_ms),
+            sort="elems.location.coordinates.ts",
+            order="desc",
+            limit=1)
         if events:
             coords = events[0]['elems']['location']['coordinates']
             dt = utc_timestamp_to_local_datetime(coords['ts'])
@@ -297,8 +351,7 @@ def create_scattermapbox_data(locations):
 
 
 @app.callback(
-    Output('live-update-map', 'figure'),
-    [Input('time-slider', 'value')],
+    Output('live-update-map', 'figure'), [Input('time-slider', 'value')],
     [State('live-update-map', 'relayoutData')])
 def update_location_map(slider_timestamp, mapdata):
     fig = {
@@ -380,23 +433,21 @@ def generic_update_scatterplot(datapoints, graph_title_prefix, data_description)
     }
 
 
-@app.callback(
-    [Output('history-location-map', 'figure'),
-     Output('battpercent-time-series', 'figure'),
-     Output('battcurrent-time-series', 'figure'),
-     Output('temp-time-series', 'figure'),
-     Output('pressure-time-series', 'figure'),
-     Output('humidity-time-series', 'figure'),
-     Output('airqual-time-series', 'figure')],
-    [Input('live-update-map', 'clickData')])
+@app.callback([
+    Output('history-location-map', 'figure'), Output('battpercent-time-series', 'figure'),
+    Output('battcurrent-time-series', 'figure'), Output('temp-time-series', 'figure'),
+    Output('pressure-time-series', 'figure'), Output('humidity-time-series', 'figure'),
+    Output('airqual-time-series', 'figure')
+], [Input('live-update-map', 'clickData')])
 def selected_runner_callback(clickData):
     app.logger.debug("In selected_runner_callback({})".format(clickData))
     if not clickData: return ({}, {}, {}, {}, {}, {}, {})
     device_name = clickData['points'][0]['text'].split(" @ ")[0]
     device_data = fetch_device_data(device_name)
-    return (update_location_history(device_data["locations"]),
-            generic_update_scatterplot(device_data["battery_percentages"], "Battery Percentage", device_name),
-            generic_update_scatterplot(device_data["battery_currents"], "Battery Current Consumption", device_name),
+    return (update_location_history(device_data["locations"]), generic_update_scatterplot(
+        device_data["battery_percentages"], "Battery Percentage", device_name),
+            generic_update_scatterplot(device_data["battery_currents"],
+                                       "Battery Current Consumption", device_name),
             generic_update_scatterplot(device_data["temperatures"], "Temperature", device_name),
             generic_update_scatterplot(device_data["pressures"], "Air Pressure", device_name),
             generic_update_scatterplot(device_data["humidity_readings"], "Humidity", device_name),
