@@ -1,0 +1,15 @@
+sources:
+{
+    checkState.c
+}
+
+requires:
+{
+    api:
+    {
+        modemServices/le_mrc.api
+        modemServices/le_sim.api
+        wifi/le_wifiAp.api
+        modemServices/le_temp.api
+    }
+}
