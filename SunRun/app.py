@@ -295,16 +295,21 @@ def get_map_data_from_devices(timestamp_s):
     text = []
     lat = []
     lon = []
-    for d in devices:
-        device_name = d['name']
-        events = get_events_for_device_stream(
-            device_name,
-            'location',
-            filter="elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}".format(
-                timestamp_s * 1000, start_time_ms),
-            sort="elems.location.coordinates.ts",
-            order="desc",
-            limit=1)
+    results = None
+    with ThreadPoolExecutor() as ex:
+        results = ex.map(
+            lambda d: (
+                d["name"],
+                get_events_for_device_stream(
+                    d["name"],
+                    'location',
+                    filter="elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}".format(
+                        timestamp_s * 1000, start_time_ms),
+                    sort="elems.location.coordinates.ts",
+                    order="desc",
+                    limit=1)),
+            devices)
+    for (device_name, events) in results:
         if events:
             coords = events[0]['elems']['location']['coordinates']
             dt = utc_timestamp_to_local_datetime(coords['ts'])
