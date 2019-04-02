@@ -220,73 +220,31 @@ def datapoints_from_events(events, data_path):
 
 
 def fetch_device_data(device_name):
-    device_data = dict()
     octave_filter = "generatedDate>={}&&generatedDate<={}".format(start_time_ms, end_time_ms)
 
-    batt_percentage_events = get_events_for_device_stream(
-        device_name,
-        "battper2c",
-        filter=octave_filter,
-        sort="GeneratedDate",
-        order="asc",
-        limit=100000)
-    device_data["battery_percentages"] = datapoints_from_events(
-        batt_percentage_events, ["elems", "battery", "BatteryPercentage"])
+    def fetch(arg):
+        (key, stream, path) = arg
+        events = get_events_for_device_stream(
+            device_name,
+            stream,
+            filter=octave_filter,
+            sort="GeneratedDate",
+            order="asc",
+            limit=100000)
+        return (key, datapoints_from_events(events, path))
 
-    batt_current_events = get_events_for_device_stream(
-        device_name,
-        "batcurrent2c",
-        filter=octave_filter,
-        sort="GeneratedDate",
-        order="asc",
-        limit=100000)
-    device_data["battery_currents"] = datapoints_from_events(batt_current_events,
-                                                             ["elems", "battery", "mA"])
-
-    temperature_events = get_events_for_device_stream(
-        device_name,
-        "temp2c",
-        filter=octave_filter,
-        sort="GeneratedDate",
-        order="asc",
-        limit=100000)
-    device_data["temperatures"] = datapoints_from_events(
-        temperature_events, ["elems", "yellowSensor", "bsec", "temperature"])
-
-    pressure_events = get_events_for_device_stream(
-        device_name,
-        "pressure2c",
-        filter=octave_filter,
-        sort="GeneratedDate",
-        order="asc",
-        limit=100000)
-    device_data["pressures"] = datapoints_from_events(pressure_events,
-                                                      ["elems", "yellowSensor", "bsec", "pressure"])
-
-    humidity_events = get_events_for_device_stream(
-        device_name,
-        "humidity2c",
-        filter=octave_filter,
-        sort="GeneratedDate",
-        order="asc",
-        limit=100000)
-    device_data["humidity_readings"] = datapoints_from_events(
-        humidity_events, ["elems", "yellowSensor", "bsec", "humidity"])
-
-    iaq_events = get_events_for_device_stream(
-        device_name, "iaq2c", filter=octave_filter, sort="GeneratedDate", order="asc", limit=100000)
-    device_data["iaq_readings"] = datapoints_from_events(
-        iaq_events, ["elems", "yellowSensor", "bsec", "iaqValue"])
-
-    location_events = get_events_for_device_stream(
-        device_name,
-        "location",
-        filter=octave_filter,
-        sort="GeneratedDate",
-        order="asc",
-        limit=100000)
-    device_data["locations"] = datapoints_from_events(location_events,
-                                                      ["elems", "location", "coordinates"])
+    key_stream_and_path = [
+        ("battery_percentages", "battper2c", ["elems", "battery", "BatteryPercentage"]),
+        ("battery_currents", "batcurrent2c", ["elems", "battery", "mA"]),
+        ("temperatures", "temp2c", ["elems", "yellowSensor", "bsec", "temperature"]),
+        ("pressures", "pressure2c", ["elems", "yellowSensor", "bsec", "pressure"]),
+        ("humidity_readings", "humidity2c", ["elems", "yellowSensor", "bsec", "humidity"]),
+        ("iaq_readings", "iaq2c", ["elems", "yellowSensor", "bsec", "iaqValue"]),
+        ("locations", "location", ["elems", "location", "coordinates"]),
+    ]
+    device_data = None
+    with ThreadPoolExecutor() as ex:
+        device_data = {k: v for (k, v) in ex.map(fetch, key_stream_and_path)}
 
     return device_data
 
@@ -450,9 +408,9 @@ def selected_runner_callback(clickData):
     device_name = clickData['points'][0]['text'].split(" @ ")[0]
     device_data = fetch_device_data(device_name)
     return (update_location_history(device_data["locations"]), generic_update_scatterplot(
-        device_data["battery_percentages"], "Battery Percentage", device_name),
-            generic_update_scatterplot(device_data["battery_currents"],
-                                       "Battery Current Consumption", device_name),
+        device_data["battery_percentages"], "Battery Percentage",
+        device_name), generic_update_scatterplot(device_data["battery_currents"],
+                                                 "Battery Current Consumption", device_name),
             generic_update_scatterplot(device_data["temperatures"], "Temperature", device_name),
             generic_update_scatterplot(device_data["pressures"], "Air Pressure", device_name),
             generic_update_scatterplot(device_data["humidity_readings"], "Humidity", device_name),
