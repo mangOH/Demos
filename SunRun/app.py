@@ -58,7 +58,20 @@ def generate_layout():
 # Vancouver Sun Run mangOH Yellow Tracking
 Continuous tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
 For more information, visit [mangoh.io](https://mangoh.io).
-                    """),
+                    """)
+            ]),
+            dbc.Col([
+                html.Div([html.Img(src=app.get_asset_url('mangoh_320.png'))]),
+            ]),
+            dbc.Col([
+                html.Div([html.Img(src=app.get_asset_url('swi_320.png'))]),
+            ]),
+            dbc.Col([
+                html.Div([html.Img(src=app.get_asset_url('digikey_320.png'))]),
+            ]),
+        ]),
+        dbc.Row([
+            dbc.Col([
                 dcc.Graph(id="live-update-map"),
                 html.Div([
                     dcc.Slider(
@@ -71,7 +84,7 @@ For more information, visit [mangoh.io](https://mangoh.io).
                 ],
                          style={"margin-bottom": 50}),
                 dcc.Graph(id='history-location-map'),
-            ]),
+            ])
         ]),
         dbc.Row([
             dbc.Col([dcc.Graph(id='battpercent-time-series')]),
