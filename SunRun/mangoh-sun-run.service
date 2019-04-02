@@ -9,8 +9,7 @@ Requires=docker.socket
 [Service]
 Restart=always
 ExecStartPre=-/usr/bin/docker network create iotlabs
-ExecStartPre=/bin/bash -c "/usr/bin/docker container inspect mangoh-sun-run 2> /dev/null || /usr/bin/docker run -d --name mangoh-sun-run --net iotlabs -v /root/sun_run_settings.py:/app/sun_run_settings.py mangoh_sun_run"
-ExecStart=/usr/bin/docker start -a mangoh-sun-run
+ExecStart=/usr/bin/docker run --rm --name mangoh-sun-run --net iotlabs -v /root/sun_run_settings.py:/app/sun_run_settings.py mangoh_sun_run 
 ExecStop=/usr/bin/docker stop -t 10 mangoh-sun-run
 
 [Install]
