@@ -1,4 +1,4 @@
-#include "${CURDIR}/../../../mangOH.sdef"
+#include "${MANGOH_ROOT}/mangOH.sdef"
 
 /*
  * You can build this SDEF by running the following command from your top-level
@@ -13,7 +13,7 @@ apps:
     ${CURDIR}/cloudInterface.${LEGATO_TARGET}.app
     ${CURDIR}/actions.${LEGATO_TARGET}.app
 
-    ${CURDIR}/apps/locationService/combainLocation
-    ${CURDIR}/apps/locationService/location
+    ${MANGOH_ROOT}/apps/locationService/combainLocation
+    ${MANGOH_ROOT}/apps/locationService/location
 #endif
 }
