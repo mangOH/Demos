@@ -6,6 +6,7 @@ RUN pip install --trusted-host pypi.python.org -r /build/requirements.txt
 
 WORKDIR /app
 COPY app.py /app/
+COPY assets /app/
 EXPOSE 8050
 
 # For testing
