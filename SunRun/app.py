@@ -105,8 +105,8 @@ vancouver_utc_delta = timedelta(hours=-7)
 vancouver_timezone = timezone(vancouver_utc_delta)
 #end_time = datetime.now(tz=vancouver_timezone)
 #start_time = end_time + timedelta(hours=-12)
-start_time = datetime(2019, 3, 17, 9, tzinfo=vancouver_timezone)
-end_time = start_time + timedelta(hours=3)
+start_time = datetime(2019, 4, 4, 6, tzinfo=vancouver_timezone)
+end_time = start_time + timedelta(hours= 2, minutes = 30)
 
 end_time_ms = int(end_time.timestamp() * 1000)
 start_time_ms = int(start_time.timestamp() * 1000)
@@ -359,12 +359,12 @@ def update_location_map(slider_timestamp, mapdata):
     return fig
 
 
-def update_location_history(locations):
+def update_location_history(locations, device_description):
     fig = {
         'data': create_scattermapbox_data(locations),
         'layout': {
             'autosize': True,
-            'title': 'Location History',
+            'title': "Location History for {}".format(device_description),
             'mapbox': {
                 'accesstoken': sun_run_settings.mapbox_access_token,
                 'center': {
@@ -420,7 +420,7 @@ def selected_runner_callback(clickData):
     if not clickData: return ({}, {}, {}, {}, {}, {}, {})
     device_name = clickData['points'][0]['text'].split(" @ ")[0]
     device_data = fetch_device_data(device_name)
-    return (update_location_history(device_data["locations"]), generic_update_scatterplot(
+    return (update_location_history(device_data["locations"], device_name), generic_update_scatterplot(
         device_data["battery_percentages"], "Battery Percentage",
         device_name), generic_update_scatterplot(device_data["battery_currents"],
                                                  "Battery Current Consumption", device_name),
