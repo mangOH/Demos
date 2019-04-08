@@ -1,4 +1,4 @@
-# Hosting path should be "/sunrun" if the site is hosted at
+# Hosting path should be "sunrun" if the site is hosted at
 # http://example.com/sunrun. If running as a developer without a reverse proxy
 # infront, set hosting_path=None.
 hosting_path = 'sunrun'
