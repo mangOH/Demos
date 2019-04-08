@@ -105,7 +105,7 @@ vancouver_utc_delta = timedelta(hours=-7)
 vancouver_timezone = timezone(vancouver_utc_delta)
 #start_time = datetime.now(tz=vancouver_timezone) - timedelta(hours=1)
 start_time = datetime(2019, 4, 14, 8, 55, tzinfo=vancouver_timezone)
-end_time = start_time + timedelta(hours=2, minutes=30)
+end_time = start_time + timedelta(hours=3, minutes=5)
 
 end_time_ms = int(end_time.timestamp() * 1000)
 start_time_ms = int(start_time.timestamp() * 1000)
