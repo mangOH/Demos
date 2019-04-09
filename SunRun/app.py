@@ -55,8 +55,8 @@ def generate_layout():
         dbc.Row([
             dbc.Col([
                 dcc.Markdown("""
-# Vancouver Sun Run mangOH Yellow Tracking
-Continuous tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
+# [Vancouver Sun Run](https://vancouversunrun.com) mangOH Yellow Tracking
+Real-time tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
 For more information, visit [mangoh.io](https://mangoh.io).
                     """)
             ]),
@@ -72,7 +72,10 @@ For more information, visit [mangoh.io](https://mangoh.io).
         ]),
         dbc.Row([
             dbc.Col([
-                dcc.Graph(id="live-update-map"),
+                dcc.Checklist(
+                    id="auto-update-checklist",
+                    options=[{"label": "Update Automatically", "value": "update-automatically"}],
+                    values=["update-automatically"]),
                 html.Div([
                     dcc.Slider(
                         id="time-slider",
@@ -83,6 +86,7 @@ For more information, visit [mangoh.io](https://mangoh.io).
                         updatemode='mouseup'),
                 ],
                          style={"margin-bottom": 50}),
+                dcc.Graph(id="live-update-map"),
                 dcc.Graph(id='history-location-map'),
             ])
         ]),
@@ -98,6 +102,7 @@ For more information, visit [mangoh.io](https://mangoh.io).
             dbc.Col([dcc.Graph(id='humidity-time-series')]),
             dbc.Col([dcc.Graph(id='airqual-time-series')])
         ]),
+        dcc.Interval(id='live-update-interval', interval=30*1000),
     ])
 
 
@@ -326,7 +331,23 @@ def create_scattermapbox_data(locations):
 
 
 @app.callback(
-    Output('live-update-map', 'figure'), [Input('time-slider', 'value')],
+    Output("time-slider", "value"),
+    [Input("auto-update-checklist", "values"),
+     Input("live-update-interval", "n_intervals")]
+)
+def interval_callback(checklist_values, n_intervals):
+    if len(checklist_values) == 0:
+        raise dash.exceptions.PreventUpdate("Skipping interval based on checkbox")
+    now = datetime.now(tz=vancouver_timezone)
+    now_s = int(now.timestamp())
+    def clamp(value, lower_bound, upper_bound):
+        return max(min(value, upper_bound), lower_bound)
+    return clamp(now_s, start_time_ms / 1000 , end_time_ms / 1000)
+
+
+@app.callback(
+    Output('live-update-map', 'figure'),
+    [Input('time-slider', 'value')],
     [State('live-update-map', 'relayoutData')])
 def update_location_map(slider_timestamp, mapdata):
     fig = {
