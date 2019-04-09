@@ -74,6 +74,8 @@ For more information, visit [mangoh.io](https://mangoh.io).
             dbc.Col([
                 dcc.Checklist(
                     id="auto-update-checklist",
+                    labelStyle={"font-weight": "bold"},
+                    inputStyle={"margin-left": "10px", "margin-right": "5px"},
                     options=[{"label": "Update Automatically", "value": "update-automatically"}],
                     values=["update-automatically"]),
                 html.Div([
