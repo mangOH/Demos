@@ -258,7 +258,7 @@ def fetch_device_data(device_name):
         ("temperatures", "temp2c", ["elems", "yellowSensor", "bsec", "temperature"]),
         ("pressures", "pressure2c", ["elems", "yellowSensor", "bsec", "pressure"]),
         ("humidity_readings", "humidity2c", ["elems", "yellowSensor", "bsec", "humidity"]),
-        ("iaq_readings", "iaq2c", ["elems", "yellowSensor", "bsec", "iaqValue"]),
+        ("light_readings", "light2c", ["elems", "yellowSensor", "light"]),
         ("locations", "location", ["elems", "location", "coordinates"]),
     ]
     device_data = None
@@ -455,7 +455,7 @@ def selected_runner_callback(clickData):
             generic_update_scatterplot(device_data["temperatures"], "Temperature", runner_name),
             generic_update_scatterplot(device_data["pressures"], "Air Pressure", runner_name),
             generic_update_scatterplot(device_data["humidity_readings"], "Humidity", runner_name),
-            generic_update_scatterplot(device_data["iaq_readings"], "Air Quality", runner_name))
+            generic_update_scatterplot(device_data["light_readings"], "Light Level", runner_name))
 
 
 app.logger.warning("start time: {}, end time: {}".format(
