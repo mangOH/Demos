@@ -11,3 +11,9 @@ octave_device_tag = ''
 
 # Mapbox
 mapbox_access_token = ''
+
+# User mapping
+# This is expected to be a dictionary mapping the device name to the runner's
+# public facing name.
+device_name_to_user_name = {
+}

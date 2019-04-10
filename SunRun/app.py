@@ -270,6 +270,7 @@ def fetch_device_data(device_name):
 
 def get_map_data_from_devices(timestamp_s):
     text = []
+    customdata = []
     lat = []
     lon = []
     results = None
@@ -288,9 +289,11 @@ def get_map_data_from_devices(timestamp_s):
             devices)
     for (device_name, events) in results:
         if events:
+            runner_name = sun_run_settings.device_name_to_user_name.get(device_name, device_name)
             coords = events[0]['elems']['location']['coordinates']
             dt = utc_timestamp_to_local_datetime(coords['ts'])
-            text.append("{} @ {}".format(device_name, datetime_to_time_string(dt)))
+            text.append("{} @ {}".format(runner_name, datetime_to_time_string(dt)))
+            customdata.append(device_name)
             lat.append(coords['lat'])
             lon.append(coords['lon'])
     return [
@@ -299,6 +302,7 @@ def get_map_data_from_devices(timestamp_s):
             lon=lon,
             lat=lat,
             text=text,
+            customdata=customdata,
             mode='line+markers',
             marker=dict(size=8))
     ]
@@ -440,17 +444,18 @@ def generic_update_scatterplot(datapoints, graph_title_prefix, data_description)
 def selected_runner_callback(clickData):
     app.logger.debug("In selected_runner_callback({})".format(clickData))
     if not clickData: return ({}, {}, {}, {}, {}, {}, {})
-    device_name = clickData['points'][0]['text'].split(" @ ")[0]
+    device_name = clickData['points'][0]['customdata']
     device_data = fetch_device_data(device_name)
-    return (update_location_history(device_data["locations"], device_name),
+    runner_name = sun_run_settings.device_name_to_user_name.get(device_name, device_name)
+    return (update_location_history(device_data["locations"], runner_name),
             generic_update_scatterplot(device_data["battery_percentages"], "Battery Percentage",
-                                       device_name),
+                                       runner_name),
             generic_update_scatterplot(device_data["battery_currents"],
-                                       "Battery Current Consumption", device_name),
-            generic_update_scatterplot(device_data["temperatures"], "Temperature", device_name),
-            generic_update_scatterplot(device_data["pressures"], "Air Pressure", device_name),
-            generic_update_scatterplot(device_data["humidity_readings"], "Humidity", device_name),
-            generic_update_scatterplot(device_data["iaq_readings"], "Air Quality", device_name))
+                                       "Battery Current Consumption", runner_name),
+            generic_update_scatterplot(device_data["temperatures"], "Temperature", runner_name),
+            generic_update_scatterplot(device_data["pressures"], "Air Pressure", runner_name),
+            generic_update_scatterplot(device_data["humidity_readings"], "Humidity", runner_name),
+            generic_update_scatterplot(device_data["iaq_readings"], "Air Quality", runner_name))
 
 
 app.logger.warning("start time: {}, end time: {}".format(
