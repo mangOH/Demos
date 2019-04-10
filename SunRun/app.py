@@ -54,21 +54,58 @@ def generate_layout():
     return html.Div([
         dbc.Row([
             dbc.Col([
-                dcc.Markdown("""
-# [Vancouver Sun Run](https://vancouversunrun.com) mangOH Yellow Tracking
-Real-time tracking of runners using Sierra Wireless's WP, Legato and Octave technologies.
-For more information, visit [mangoh.io](https://mangoh.io).
-                    """)
+                dcc.Markdown("# Vancouver Sun Run mangOH Yellow Tracking"),
+                html.Div(
+                    [
+                        dcc.Markdown("""
+Real-time tracking of Sierra Wireless employee participants in the 2019 [Vancouver Sun
+Run](https://vancouversunrun.com) on Sunday, April 14th at 9 a.m.
+
+The trackers are built with a [mangOH Yellow](https://mangoh.io/mangoh-yellow) and Sierra Wireless
+technologies ([learn more](https://mangoh.io/project/vancouver-sun-run-2019-runner-live-tracking))
+
+Register for the [mangOH Yellow Beta Giveaway
+Contest](https://mangoh.io/project/mangoh-yellow-beta-giveaway-2019) for a chance to win a mangOH
+Yellow.
+                        """)
+                    ],
+                    style={"font-size": "1.125em"}
+                )
             ]),
+#            dbc.Col([
+#                html.Div([
+#                    html.A(
+#                        [html.Img(src=app.get_asset_url("mangoh_320.png"))],
+#                        href="https://mangoh.io")
+#                ]),
+#                html.Div([
+#                    html.A(
+#                        [html.Img(src=app.get_asset_url('swi_320.png'))],
+#                        href="https://sierrawireless.com")
+#                ]),
+#                html.Div([
+#                    html.A(
+#                        [html.Img(src=app.get_asset_url('digikey_320.png'))],
+#                        href="https://www.digikey.com"),
+#                ]),
+#            ], width=3)
+        ]),
+        dbc.Row([
             dbc.Col([
-                html.Div([html.Img(src=app.get_asset_url('mangoh_320.png'))]),
-            ]),
+                html.A(
+                    [html.Img(src=app.get_asset_url("mangoh_320.png"))],
+                    href="https://mangoh.io"),
+            ], style={"text-align": "center"}),
             dbc.Col([
-                html.Div([html.Img(src=app.get_asset_url('swi_320.png'))]),
-            ]),
+                html.A(
+                    [html.Img(src=app.get_asset_url('swi_320.png'))],
+                    href="https://sierrawireless.com"),
+            ], style={"text-align": "center"}),
             dbc.Col([
-                html.Div([html.Img(src=app.get_asset_url('digikey_320.png'))]),
-            ]),
+                html.A(
+                    [html.Img(src=app.get_asset_url('digikey_320.png'))],
+                    href="https://www.digikey.com"),
+            ], style={"text-align": "center"}),
         ]),
         dbc.Row([
             dbc.Col([
