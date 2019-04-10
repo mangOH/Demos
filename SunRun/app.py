@@ -421,7 +421,7 @@ def create_scatterplot(data_points, title):
     return [go.Scatter(x=x, y=y, name=title)]
 
 
-def generic_update_scatterplot(datapoints, graph_title_prefix, data_description):
+def generic_update_scatterplot(datapoints, graph_title_prefix, data_description, yaxis_label):
     return {
         'data': create_scatterplot(datapoints, data_description),
         'layout': {
@@ -430,7 +430,8 @@ def generic_update_scatterplot(datapoints, graph_title_prefix, data_description)
             'paper_bgcolor': colors['background'],
             'font': {
                 'color': colors['text']
-            }
+            },
+            'yaxis': {'title': yaxis_label},
         }
     }
 
@@ -449,13 +450,13 @@ def selected_runner_callback(clickData):
     runner_name = sun_run_settings.device_name_to_user_name.get(device_name, device_name)
     return (update_location_history(device_data["locations"], runner_name),
             generic_update_scatterplot(device_data["battery_percentages"], "Battery Percentage",
-                                       runner_name),
+                                       runner_name, "%"),
             generic_update_scatterplot(device_data["battery_currents"],
-                                       "Battery Current Consumption", runner_name),
-            generic_update_scatterplot(device_data["temperatures"], "Temperature", runner_name),
-            generic_update_scatterplot(device_data["pressures"], "Air Pressure", runner_name),
-            generic_update_scatterplot(device_data["humidity_readings"], "Humidity", runner_name),
-            generic_update_scatterplot(device_data["light_readings"], "Light Level", runner_name))
+                                       "Battery Current Consumption", runner_name, "mAh"),
+            generic_update_scatterplot(device_data["temperatures"], "Temperature", runner_name, "°C"),
+            generic_update_scatterplot(device_data["pressures"], "Air Pressure", runner_name, "Pa"),
+            generic_update_scatterplot(device_data["humidity_readings"], "Humidity", runner_name, "%"),
+            generic_update_scatterplot(device_data["light_readings"], "Light Level", runner_name, "nW/cm²"))
 
 
 app.logger.warning("start time: {}, end time: {}".format(
