@@ -88,8 +88,8 @@ For more information, visit [mangoh.io](https://mangoh.io).
                         updatemode='mouseup'),
                 ],
                          style={"margin-bottom": 50}),
-                dcc.Graph(id="live-update-map"),
-                dcc.Graph(id='history-location-map'),
+                dcc.Graph(id="live-update-map", config={"scrollZoom": True}),
+                dcc.Graph(id='history-location-map', config={"scrollZoom": True}),
             ])
         ]),
         dbc.Row([
