@@ -394,10 +394,10 @@ def update_location_history(locations, device_description):
             'mapbox': {
                 'accesstoken': sun_run_settings.mapbox_access_token,
                 'center': {
-                    'lat': 49.172477,
-                    'lon': -123.071298
+                    'lat': 49.281191,
+                    'lon': -123.125991
                 },
-                'zoom': 8,
+                'zoom': 12,
             },
             'uirevision': 1,
             'plot_bgcolor': colors['background'],
