@@ -45,7 +45,7 @@ container. This means that the Docker image doesn't need to be re-built every ti
 during development.
 1. `cp sun_run_settings.template.py sun_run_settings.py`
 1. Fill in the required settings in `sun_run_settings.py`
-1. `docker run -p 8050:8050 -v `pwd`/sun_run_settings.py:/app/sun_run_settings.py -v `pwd`/app.py:/app/app.py -v `pwd`/assets:/app/assets mangoh_sun_run:0.0.1`
+1. ``docker run --name mangoh-sun-run --rm -p 8050:8050 -v `pwd`/sun_run_settings.py:/app/sun_run_settings.py -v `pwd`/app.py:/app/app.py -v `pwd`/assets:/app/assets mangoh_sun_run:0.0.1``
 
 ### Deployment
 To build and deploy, run `./deploy_to_server.sh`.  The "VPS Setup" steps are a prerequisite.
