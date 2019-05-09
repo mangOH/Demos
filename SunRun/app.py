@@ -2,27 +2,25 @@
 # -*- coding: utf-8 -*-
 
 # Python built-in modules
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 import time
-import urllib
 
 # Dependencies from pip
 from dash.dependencies import Input, Output, State
-from flask_caching import Cache
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 import plotly
 import plotly.graph_objs as go
-import requests
 import flask
 
 # Local modules
 import sun_run_settings
+from backend_octave import BackendOctave
+from app_cache import cache
 
 
 def time_generator(start_time, end_time, minute_increment):
@@ -72,23 +70,6 @@ Yellow.
                     style={"font-size": "1.125em"}
                 )
             ]),
-#            dbc.Col([
-#                html.Div([
-#                    html.A(
-#                        [html.Img(src=app.get_asset_url("mangoh_320.png"))],
-#                        href="https://mangoh.io")
-#                ]),
-#                html.Div([
-#                    html.A(
-#                        [html.Img(src=app.get_asset_url('swi_320.png'))],
-#                        href="https://sierrawireless.com")
-#                ]),
-#                html.Div([
-#                    html.A(
-#                        [html.Img(src=app.get_asset_url('digikey_320.png'))],
-#                        href="https://www.digikey.com"),
-#                ]),
-#            ], width=3)
         ]),
         dbc.Row([
             dbc.Col([
@@ -158,6 +139,7 @@ time_delta = 10
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 
 server = flask.Flask(__name__)
+server.config["PROPAGATE_EXCEPTIONS"] = True
 
 pathname_params = dict()
 if sun_run_settings.hosting_path is not None:
@@ -168,11 +150,9 @@ app = dash.Dash(
 app.title = 'mangOH Sun Run'
 app.layout = generate_layout()
 
-cache = Cache(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
+cache.init_app(app.server, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': 'cache-directory'})
 
-creds = {'X-Auth-Token': sun_run_settings.octave_token, 'X-Auth-User': sun_run_settings.octave_user}
 
-device_update_interval = 60
 
 colors = {'background': '#111111', 'text': '#7FDBFF'}
 
@@ -202,137 +182,19 @@ def datetime_to_time_string(dt):
     return dt.strftime("%H:%M:%S")
 
 
-# TODO: Currently, only the "name" property of the devices in the devices list
-# is used to construct a query for the map data. As a result, "devices" could
-# be a much smaller/simpler object. Really, it just needs to be device_names.
-def update_devices():
-    global devices
-    url = 'https://octave-api.sierrawireless.io/v5.0/{}/device/?filter=tags.{}%3D%3D%22true%22'.format(
-        sun_run_settings.octave_company, sun_run_settings.octave_device_tag)
-    all_devs = [d for d in requests.get(url, headers=creds).json()['body']]
-    for d in all_devs:
-        if 'location' not in d.keys():
-            d.update(location={'lat': 49.172477, 'lon': -123.071298})
-    devices = all_devs
-    app.logger.warning("Updating devices to: {}".format(", ".join([d["name"] for d in devices])))
-
-
-def run_periodically(fn, period=timedelta(seconds=20)):
-    """
-    Run a given function in a loop with a delay before each subsequent run
-    """
-    while True:
-        fn()
-        time.sleep(period.total_seconds())
-
-
-def get_events_for_device_stream(device_name,
-                                 stream_name,
-                                 filter=None,
-                                 sort=None,
-                                 order=None,
-                                 limit=None):
-    """
-    Get the events in the device stream according to the query parameters
-    """
-    url = "https://octave-api.sierrawireless.io/v5.0/{}/event/?path=/{}/devices/{}/{}".format(
-        sun_run_settings.octave_company, sun_run_settings.octave_company, device_name, stream_name)
-    if filter is not None:
-        url = "{}&filter={}".format(url, urllib.parse.quote(filter))
-    if sort is not None:
-        url = "{}&sort={}".format(url, sort)
-    if order is not None:
-        if order != "asc" and order != "desc":
-            raise Exception("Invalid order parameter: {}".format(order))
-        url = "{}&order={}".format(url, order)
-    if limit is not None:
-        url = "{}&limit={}".format(url, limit)
-    app.logger.warning("get_events_for_device_stream: {}".format(url))
-    return requests.get(url, headers=creds).json()['body']
-
-
-class DataPoint:
-    def __init__(self, generated_ts, data):
-        self.generated_ts = generated_ts
-        self.data = data
-
-
-@cache.memoize(timeout=20)
-def datapoints_from_events(events, data_path):
-    res = list()
-    for e in events:
-        ts = e['generatedDate']
-        data = e
-        for p in data_path:
-            data = data.get(p)
-            if data is None:
-                app.logger.debug("Found bad data. Couldn't access path {} in event {}".format(
-                    "/".join(data_path), e))
-                break
-        if data is None:
-            continue
-        res.append(DataPoint(ts, data))
-    return res
-
-
-def fetch_device_data(device_name):
-    octave_filter = "generatedDate>={}&&generatedDate<={}".format(start_time_ms, end_time_ms)
-
-    def fetch(arg):
-        (key, stream, path) = arg
-        events = get_events_for_device_stream(
-            device_name,
-            stream,
-            filter=octave_filter,
-            sort="GeneratedDate",
-            order="asc",
-            limit=100000)
-        return (key, datapoints_from_events(events, path))
-
-    key_stream_and_path = [
-        ("battery_percentages", "battper2c", ["elems", "battery", "BatteryPercentage"]),
-        ("battery_currents", "batcurrent2c", ["elems", "battery", "mA"]),
-        ("temperatures", "temp2c", ["elems", "yellowSensor", "bsec", "temperature"]),
-        ("pressures", "pressure2c", ["elems", "yellowSensor", "bsec", "pressure"]),
-        ("humidity_readings", "humidity2c", ["elems", "yellowSensor", "bsec", "humidity"]),
-        ("light_readings", "light2c", ["elems", "yellowSensor", "light"]),
-        ("locations", "location", ["elems", "location", "coordinates"]),
-    ]
-    device_data = None
-    with ThreadPoolExecutor() as ex:
-        device_data = {k: v for (k, v) in ex.map(fetch, key_stream_and_path)}
-
-    return device_data
-
-
 def get_map_data_from_devices(timestamp_s):
+    loc_data = backend.get_locations_at_time(timestamp_s * 1000, start_time_ms)
     text = []
     customdata = []
     lat = []
     lon = []
-    results = None
-    with ThreadPoolExecutor() as ex:
-        results = ex.map(
-            lambda d: (
-                d["name"],
-                get_events_for_device_stream(
-                    d["name"],
-                    'location',
-                    filter="elems.location.coordinates.ts<={} && elems.location.coordinates.ts>={}".format(
-                        timestamp_s * 1000, start_time_ms),
-                    sort="elems.location.coordinates.ts",
-                    order="desc",
-                    limit=1)),
-            devices)
-    for (device_name, events) in results:
-        if events:
-            runner_name = sun_run_settings.device_name_to_user_name.get(device_name, device_name)
-            coords = events[0]['elems']['location']['coordinates']
-            dt = utc_timestamp_to_local_datetime(coords['ts'])
-            text.append("{} @ {}".format(runner_name, datetime_to_time_string(dt)))
-            customdata.append(device_name)
-            lat.append(coords['lat'])
-            lon.append(coords['lon'])
+    for (device_name, ts, lat_val, lon_val) in loc_data:
+        runner_name = sun_run_settings.device_name_to_user_name.get(device_name, device_name)
+        dt = utc_timestamp_to_local_datetime(ts)
+        text.append("{} @ {}".format(runner_name, datetime_to_time_string(dt)))
+        customdata.append(device_name)
+        lat.append(lat_val)
+        lon.append(lon_val)
     return [
         dict(
             type='scattermapbox',
@@ -483,7 +345,7 @@ def selected_runner_callback(clickData):
     app.logger.debug("In selected_runner_callback({})".format(clickData))
     if not clickData: return ({}, {}, {}, {}, {}, {}, {})
     device_name = clickData['points'][0]['customdata']
-    device_data = fetch_device_data(device_name)
+    device_data = backend.fetch_device_data(device_name, start_time_ms, end_time_ms)
     runner_name = sun_run_settings.device_name_to_user_name.get(device_name, device_name)
     return (update_location_history(device_data["locations"], runner_name),
             generic_update_scatterplot(device_data["battery_percentages"], "Battery Percentage",
@@ -499,11 +361,14 @@ def selected_runner_callback(clickData):
 app.logger.warning("start time: {}, end time: {}".format(
     datetime_to_datetime_string(start_time), datetime_to_datetime_string(end_time)))
 
-devices = None
-executor = ThreadPoolExecutor(max_workers=1)
-executor.submit(run_periodically, update_devices, period=timedelta(seconds=device_update_interval))
-while (devices is None):
-    time.sleep(2)  # make sure devices get loaded
+
+backend = None
+if sun_run_settings.backend == "octave":
+    backend = BackendOctave(app, sun_run_settings.octave_settings)
+else:
+    print("Invalid backend specified in sun_run_settings: {}".format(sun_run_settings.backend))
+    sys.exit(1)
+
 
 if __name__ == '__main__':
     app.run_server(host='0.0.0.0', port=8050, debug=True)
