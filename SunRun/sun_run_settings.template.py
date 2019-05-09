@@ -18,6 +18,11 @@ octave_settings = {
     "device_tag": "",
 }
 
+partner = {
+    "image": "digikey_320.png",
+    "link": "http://www.digikey.com",
+}
+
 # Mapbox
 mapbox_access_token = ""
 

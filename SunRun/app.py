@@ -83,8 +83,8 @@ Yellow.
             ], style={"text-align": "center"}),
             dbc.Col([
                 html.A(
-                    [html.Img(src=app.get_asset_url('digikey_320.png'))],
-                    href="https://www.digikey.com"),
+                    [html.Img(src=app.get_asset_url(sun_run_settings.partner["image"]))],
+                    href=sun_run_settings.partner["link"]),
             ], style={"text-align": "center"}),
         ]),
         dbc.Row([
