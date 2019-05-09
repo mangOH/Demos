@@ -19,7 +19,6 @@ import flask
 
 # Local modules
 import sun_run_settings
-from backend_octave import BackendOctave
 from app_cache import cache
 
 
@@ -364,7 +363,11 @@ app.logger.warning("start time: {}, end time: {}".format(
 
 backend = None
 if sun_run_settings.backend == "octave":
-    backend = BackendOctave(app, sun_run_settings.octave_settings)
+    from backend_octave import BackendOctave
+    backend = BackendOctave(app, sun_run_settings.octave)
+elif sun_run_settings.backend == "sqlite":
+    from backend_sqlite import BackendSqlite
+    backend = BackendSqlite(app, sun_run_settings.sqlite)
 else:
     print("Invalid backend specified in sun_run_settings: {}".format(sun_run_settings.backend))
     sys.exit(1)

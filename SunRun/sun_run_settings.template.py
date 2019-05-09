@@ -3,7 +3,12 @@
 # infront, set hosting_path=None.
 hosting_path = "sunrun"
 
-backend = "octave"
+backend = "sqlite"
+#backend = "octave"
+
+sqlite_settings = {
+    "database": "your_db.sqlite"
+}
 
 # Sierra Wireless Octave settings used when backend == "octave"
 octave_settings = {
