@@ -1,9 +1,9 @@
-#include "${MANGOH_ROOT}/mangOH.sdef"
+#include "${MANGOH_ROOT}/yellow.sdef"
 
 /*
  * You can build this SDEF by running the following command from your top-level
  * mangOH directory:
- * MANGOH_ROOT=`pwd` MANGOH_BOARD=yellow mksys -t wp76xx samples/Demos/SunRun/SunRun.sdef
+ * MANGOH_ROOT=`pwd` mksys -t wp76xx samples/Demos/SunRun/SunRun.sdef
  */
 
 apps:
