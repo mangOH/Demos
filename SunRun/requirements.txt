@@ -6,7 +6,7 @@ dash-table==3.6.0
 dash-daq==0.1.0
 requests==2.21.0
 plotly==3.7.0
-Flask==1.0.2
+Flask==2.3.2
 Flask-Caching==1.6.0
 
 # WSGI HTTP server for deployment
